@@ -3,13 +3,16 @@ spring:
     name: verivault
 
   datasource:
-    url: jdbc:sqlite:./database/verivault.db
     driver-class-name: org.sqlite.JDBC
+    url: jdbc:sqlite:verivault.db
+
+    hikari:
+      maximum-pool-size: 1
 
   jpa:
     database-platform: org.hibernate.community.dialect.SQLiteDialect
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
