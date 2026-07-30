@@ -5,7 +5,7 @@ export default function AuthLayout() {
     <main className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white px-6 py-4">
         <Link className="font-semibold text-slate-900" to="/">
-          VeriVault
+          AuthVault
         </Link>
       </header>
       <Outlet />

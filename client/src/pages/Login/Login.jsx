@@ -44,7 +44,7 @@ export default function Login() {
       <div className="w-full rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-8">
           <p className="text-sm font-semibold text-indigo-600">Welcome back</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Sign in to VeriVault</h1>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Sign in to AuthVault</h1>
           <p className="mt-2 text-sm text-slate-500">Access your secure verification workspace.</p>
         </div>
 
@@ -85,7 +85,7 @@ export default function Login() {
         </form>
 
         <p className="mt-6 text-center text-sm text-slate-500">
-          New to VeriVault?{' '}
+          New to AuthVault?{' '}
           <Link className="font-semibold text-indigo-600 hover:text-indigo-700" to="/register">
             Create an account
           </Link>

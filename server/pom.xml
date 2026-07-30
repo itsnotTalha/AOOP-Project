@@ -11,11 +11,11 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.verivault</groupId>
-    <artifactId>verivault</artifactId>
+    <groupId>com.authvault</groupId>
+    <artifactId>authvault</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>VeriVault</name>
-    <description>University capstone project backend for VeriVault</description>
+    <name>AuthVault</name>
+    <description>University capstone project backend for AuthVault</description>
 
     <properties>
         <java.version>21</java.version>

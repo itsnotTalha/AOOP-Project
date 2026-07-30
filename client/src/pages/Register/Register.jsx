@@ -41,7 +41,7 @@ export default function Register() {
         <div className="mb-8">
           <p className="text-sm font-semibold text-indigo-600">Get started</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Create your account</h1>
-          <p className="mt-2 text-sm text-slate-500">Build a trusted digital identity with VeriVault.</p>
+          <p className="mt-2 text-sm text-slate-500">Build a trusted digital identity with AuthVault.</p>
         </div>
 
         {serverError && (

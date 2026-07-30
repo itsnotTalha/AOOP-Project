@@ -1,6 +1,6 @@
-# VeriVault Backend
+# AuthVault Backend
 
-Backend skeleton for the VeriVault university capstone project.
+Backend skeleton for the AuthVault university capstone project.
 
 ## Requirements
 

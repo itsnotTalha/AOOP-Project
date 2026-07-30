@@ -20,7 +20,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      window.dispatchEvent(new Event('verivault:unauthorized'))
+      window.dispatchEvent(new Event('authvault:unauthorized'))
     }
 
     return Promise.reject(error)

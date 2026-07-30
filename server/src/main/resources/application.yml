@@ -1,10 +1,10 @@
 spring:
   application:
-    name: verivault
+    name: authvault
 
   datasource:
     driver-class-name: org.sqlite.JDBC
-    url: jdbc:sqlite:verivault.db
+    url: jdbc:sqlite:authvault.db
 
     hikari:
       maximum-pool-size: 1

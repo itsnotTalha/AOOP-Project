@@ -11,7 +11,7 @@ export default function DashboardLayout() {
       <aside className="w-60 border-r border-slate-200 bg-white p-4">
         <Link className="flex items-center gap-2 font-semibold text-slate-900" to="/dashboard">
           <LayoutDashboard size={18} />
-          VeriVault
+          AuthVault
         </Link>
         <nav className="mt-8 text-sm text-slate-600">Sidebar placeholder</nav>
       </aside>

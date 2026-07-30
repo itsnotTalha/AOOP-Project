@@ -34,9 +34,9 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const handleUnauthorized = () => logout()
-    window.addEventListener('verivault:unauthorized', handleUnauthorized)
+    window.addEventListener('authvault:unauthorized', handleUnauthorized)
 
-    return () => window.removeEventListener('verivault:unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('authvault:unauthorized', handleUnauthorized)
   }, [logout])
 
   const value = useMemo(

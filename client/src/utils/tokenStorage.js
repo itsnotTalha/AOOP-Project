@@ -1,5 +1,5 @@
-const TOKEN_KEY = 'verivault_access_token'
-const USER_KEY = 'verivault_current_user'
+const TOKEN_KEY = 'authvault_access_token'
+const USER_KEY = 'authvault_current_user'
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY)
