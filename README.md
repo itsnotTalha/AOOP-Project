@@ -45,6 +45,11 @@ server/   # Spring Boot backend
 
 ## Running The Project Locally
 
+### Prerequisites
+
+- Install a full JDK 21, not just a Java runtime, so `javac` is available for Maven.
+- Confirm `java -version` and `javac -version` both report Java 21 before running the backend.
+
 ### Backend
 
 1. Open the `server/` directory.
@@ -54,6 +59,8 @@ server/   # Spring Boot backend
 ```bash
 mvn spring-boot:run
 ```
+
+If Maven reports `release version 21 not supported`, update `JAVA_HOME` and `PATH` to point to a JDK 21 installation.
 
 ### Frontend
 
