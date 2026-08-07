@@ -235,6 +235,8 @@ java -jar target/authvault-0.0.1-SNAPSHOT.jar
 
 The frontend uses `http://localhost:8080/api` as its API base URL.
 
+The complete implementation contract for Digital Asset Authentication, Document Verification, Secure Vault, Marketplace, Fractional Ownership, wallet support, and dashboard integration is available in [docs/API_SPECIFICATION.md](docs/API_SPECIFICATION.md). It includes endpoint ownership, schemas, security rules, database changes, dependencies, and the definition of done for each team. A detailed first-feature walkthrough is available in the [Image Authentication Implementation Guide](docs/IMAGE_AUTHENTICATION_IMPLEMENTATION_GUIDE.md).
+
 ### Public endpoints
 
 | Method | Endpoint | Purpose |
