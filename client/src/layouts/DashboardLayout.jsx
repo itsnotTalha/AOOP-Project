@@ -19,7 +19,7 @@ import { useAuth } from '../hooks/useAuth'
 
 const navigation = [
   { label: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Assets', icon: Files, href: '#' },
+  { label: 'Assets', icon: Files, href: '/assets' },
   { label: 'Verifications', icon: FileCheck2, href: '#' },
   { label: 'Vault', icon: Vault, href: '#' },
   { label: 'Wallet', icon: Wallet, href: '#' },
@@ -74,7 +74,8 @@ export default function DashboardLayout() {
           <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Workspace</p>
           <div className="space-y-1">
             {navigation.map(({ label, icon: Icon, href }) => {
-              const active = href === '/dashboard' && location.pathname === '/dashboard'
+              const active = location.pathname === href
+                || (href !== '#' && href !== '/dashboard' && location.pathname.startsWith(`${href}/`))
               return (
                 <Link
                   key={label}

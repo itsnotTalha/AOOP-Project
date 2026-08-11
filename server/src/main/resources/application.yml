@@ -2,6 +2,11 @@ spring:
   application:
     name: authvault
 
+  servlet:
+    multipart:
+      max-file-size: ${AUTHVAULT_UPLOAD_DOCUMENT_MAX_SIZE:50MB}
+      max-request-size: ${AUTHVAULT_UPLOAD_MAX_REQUEST_SIZE:51MB}
+
   datasource:
     driver-class-name: org.sqlite.JDBC
     url: jdbc:sqlite:authvault.db
@@ -24,3 +29,9 @@ server:
 jwt:
   secret: CHANGE_ME_TO_A_LONG_RANDOM_SECRET
   expiration: 86400000
+
+authvault:
+  upload:
+    image-max-size: ${AUTHVAULT_UPLOAD_IMAGE_MAX_SIZE:25MB}
+    document-max-size: ${AUTHVAULT_UPLOAD_DOCUMENT_MAX_SIZE:50MB}
+    root-directory: ${AUTHVAULT_UPLOAD_ROOT:uploads}

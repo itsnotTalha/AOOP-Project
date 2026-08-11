@@ -32,8 +32,10 @@ CREATE TABLE digital_assets (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     uuid                TEXT NOT NULL UNIQUE,
     owner_id            INTEGER NOT NULL,
-    title               TEXT NOT NULL,
-    description         TEXT,
+    title               TEXT NOT NULL
+                        CHECK (length(title) BETWEEN 1 AND 150),
+    description         TEXT
+                        CHECK (description IS NULL OR length(description) <= 2000),
     asset_type          TEXT NOT NULL
                         CHECK (asset_type IN ('IMAGE', 'DOCUMENT')),
     original_filename   TEXT NOT NULL,
@@ -41,7 +43,9 @@ CREATE TABLE digital_assets (
     mime_type           TEXT NOT NULL,
     file_size           INTEGER NOT NULL CHECK (file_size >= 0),
     storage_path        TEXT NOT NULL,
-    sha256_hash         TEXT NOT NULL UNIQUE,
+    sha256_hash         TEXT NOT NULL UNIQUE
+                        CHECK (length(sha256_hash) = 64 AND
+                               sha256_hash NOT GLOB '*[^0-9a-f]*'),
     perceptual_hash     TEXT,
     metadata_json       TEXT,
     upload_date         TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -81,7 +85,8 @@ CREATE TABLE verification_history (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     asset_id            INTEGER NOT NULL,
     verified_by         INTEGER NOT NULL,
-    verification_method TEXT NOT NULL,
+    verification_method TEXT NOT NULL
+                        CHECK (verification_method IN ('SHA256_UPLOAD', 'SHA256_INTEGRITY')),
     result              TEXT NOT NULL
                         CHECK (result IN ('PENDING', 'VERIFIED', 'REJECTED', 'INCONCLUSIVE')),
     similarity_score    NUMERIC

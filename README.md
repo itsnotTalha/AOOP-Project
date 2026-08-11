@@ -75,7 +75,7 @@ AOOP-Project/
 ├── server/                         # Spring Boot backend
 │   ├── database/                   # Database support files and schema
 │   ├── uploads/                    # Planned uploaded-file storage
-│   ├── src/main/java/com/verivault/
+│   ├── src/main/java/com/authvault/
 │   │   ├── config/                 # Web configuration
 │   │   ├── controller/             # REST controllers
 │   │   ├── dto/                    # API request and response objects

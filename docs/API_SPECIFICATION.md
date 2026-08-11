@@ -903,7 +903,7 @@ An endpoint is not complete until it has:
 ## 18. Suggested Package Boundaries
 
 ```text
-com.verivault
+com.authvault
 ├── asset/
 │   ├── controller
 │   ├── dto

@@ -261,7 +261,7 @@ Resolve and normalize configured directories at startup. Reject any resolved des
 The following layout keeps controllers thin and algorithm code independently testable:
 
 ```text
-com.verivault.asset
+com.authvault.asset
 ├── controller/
 │   └── ImageAssetController.java
 ├── dto/
@@ -561,7 +561,7 @@ public interface AssetHashProjection {
 @Query("""
     select a.id as id, a.uuid as uuid, a.perceptualHash as perceptualHash
     from DigitalAsset a
-    where a.assetType = com.verivault.entity.DigitalAsset.AssetType.IMAGE
+    where a.assetType = com.authvault.entity.DigitalAsset.AssetType.IMAGE
       and a.perceptualHash is not null
       and a.deletedAt is null
 """)
