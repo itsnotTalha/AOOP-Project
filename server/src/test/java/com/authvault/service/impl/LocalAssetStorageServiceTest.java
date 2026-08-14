@@ -129,6 +129,64 @@ class LocalAssetStorageServiceTest {
     }
 
     @Test
+    void stagesAndRestoresStoredAssetWithGeneratedQuarantineName() throws Exception {
+        byte[] content = "restore-me".getBytes(StandardCharsets.UTF_8);
+        Path temporaryFile = storageService.createTempFile("png");
+        Files.write(temporaryFile, content);
+        StoredAsset storedAsset = storageService.commitValidatedImage(temporaryFile, "png");
+        Path committedFile = uploadRoot.resolve(storedAsset.storageKey());
+
+        var stagedDeletion = storageService
+                .stageStoredAssetForDeletion(storedAsset.storageKey())
+                .orElseThrow();
+
+        assertFalse(Files.exists(committedFile));
+        assertTrue(stagedDeletion.quarantineFilename()
+                .matches("[0-9a-f-]{36}\\.delete"));
+        assertTrue(Files.exists(uploadRoot.resolve("temp")
+                .resolve(stagedDeletion.quarantineFilename())));
+
+        storageService.restoreStagedDeletion(stagedDeletion);
+
+        assertTrue(Files.exists(committedFile));
+        assertArrayEquals(content, Files.readAllBytes(committedFile));
+        assertFalse(Files.exists(uploadRoot.resolve("temp")
+                .resolve(stagedDeletion.quarantineFilename())));
+    }
+
+    @Test
+    void permanentlyCleansStagedAssetDeletion() throws Exception {
+        Path temporaryFile = storageService.createTempFile("pdf");
+        Files.writeString(temporaryFile, "%PDF-test");
+        StoredAsset storedAsset = storageService.commitValidatedDocument(temporaryFile, "pdf");
+        var stagedDeletion = storageService
+                .stageStoredAssetForDeletion(storedAsset.storageKey())
+                .orElseThrow();
+        Path quarantineFile = uploadRoot.resolve("temp")
+                .resolve(stagedDeletion.quarantineFilename());
+
+        storageService.deleteStagedDeletionQuietly(stagedDeletion);
+
+        assertFalse(Files.exists(quarantineFile));
+        assertFalse(Files.exists(uploadRoot.resolve(storedAsset.storageKey())));
+    }
+
+    @Test
+    void treatsAlreadyMissingStoredFileAsNoStagedDeletion() {
+        assertTrue(storageService.stageStoredAssetForDeletion(
+                "images/00000000-0000-0000-0000-000000000000.png").isEmpty());
+    }
+
+    @Test
+    void rejectsTraversalWhenStagingDeletionWithoutLeakingRoot() {
+        FileStorageException exception = assertThrows(FileStorageException.class,
+                () -> storageService.stageStoredAssetForDeletion(
+                        "images/../../outside.png"));
+
+        assertFalse(exception.getMessage().contains(testDirectory.toString()));
+    }
+
+    @Test
     void refusesDestinationDirectoryReplacedBySymlink() throws Exception {
         Path temporaryFile = storageService.createTempFile("png");
         Files.writeString(temporaryFile, "content");

@@ -9,8 +9,10 @@ import com.authvault.entity.VerificationHistory;
 import com.authvault.exception.BadRequestException;
 import com.authvault.exception.DuplicateFileException;
 import com.authvault.exception.UnauthorizedException;
+import com.authvault.exception.VerificationException;
 import com.authvault.repository.DigitalAssetRepository;
 import com.authvault.security.user.CustomUserDetails;
+import com.authvault.service.PerceptualHashService;
 import com.authvault.validation.UploadFileValidator;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -51,6 +53,7 @@ class AssetUploadServiceImplTest {
     Path testDirectory;
 
     private Path uploadRoot;
+    private UploadProperties uploadProperties;
     private RepositoryStub repositoryStub;
     private AssetUploadServiceImpl uploadService;
     private User currentUser;
@@ -58,7 +61,7 @@ class AssetUploadServiceImplTest {
     @BeforeEach
     void setUp() {
         uploadRoot = testDirectory.resolve("uploads");
-        UploadProperties uploadProperties = new UploadProperties();
+        uploadProperties = new UploadProperties();
         uploadProperties.setRootDirectory(uploadRoot);
 
         repositoryStub = new RepositoryStub();
@@ -67,7 +70,8 @@ class AssetUploadServiceImplTest {
                 repository,
                 new UploadFileValidator(uploadProperties),
                 new LocalAssetStorageService(uploadProperties),
-                new Sha256ServiceImpl());
+                new Sha256ServiceImpl(),
+                new PerceptualHashServiceImpl());
 
         currentUser = authenticatedUser();
         CustomUserDetails userDetails = new CustomUserDetails(currentUser);
@@ -117,6 +121,7 @@ class AssetUploadServiceImplTest {
         assertEquals("A profile image", asset.getDescription());
         assertTrue(asset.getStoredFilename().matches("[0-9a-f-]{36}\\.jpg"));
         assertTrue(asset.getStoragePath().matches("images/[0-9a-f-]{36}\\.jpg"));
+        assertTrue(asset.getPerceptualHash().matches("[0-9a-f]{16}"));
         assertFalse(Path.of(asset.getStoragePath()).isAbsolute());
         assertTrue(Files.exists(uploadRoot.resolve(asset.getStoragePath())));
         assertNull(asset.getDocument());
@@ -139,6 +144,7 @@ class AssetUploadServiceImplTest {
         assertEquals("application/pdf", response.getMimeType());
         assertTrue(asset.getStoragePath().matches("documents/[0-9a-f-]{36}\\.pdf"));
         assertNotNull(asset.getDocument());
+        assertNull(asset.getPerceptualHash());
         assertSame(asset, asset.getDocument().getAsset());
         assertNull(asset.getDocument().getExtractedText());
         assertNull(asset.getDocument().getSemanticHash());
@@ -147,6 +153,20 @@ class AssetUploadServiceImplTest {
         assertNotNull(asset.getDocument().getCreatedAt());
         assertUploadVerification(asset);
         assertDirectoryEmpty(uploadRoot.resolve("temp"));
+    }
+
+    @Test
+    void uploadsPngWithPersistedPerceptualHash() throws Exception {
+        AssetUploadRequest request = request(
+                "PNG",
+                null,
+                new MockMultipartFile("file", "image.png", "image/png", createImage("png")));
+
+        uploadService.uploadImage(request);
+
+        assertNotNull(repositoryStub.savedAsset);
+        assertTrue(repositoryStub.savedAsset.getPerceptualHash().matches("[0-9a-f]{16}"));
+        assertTrue(Files.exists(uploadRoot.resolve(repositoryStub.savedAsset.getStoragePath())));
     }
 
     @Test
@@ -174,6 +194,43 @@ class AssetUploadServiceImplTest {
 
         assertThrows(IllegalStateException.class, () -> uploadService.uploadImage(request));
 
+        assertDirectoryEmpty(uploadRoot.resolve("temp"));
+        assertDirectoryEmpty(uploadRoot.resolve("images"));
+    }
+
+    @Test
+    void failsImageUploadAndCleansTempWhenPerceptualHashingFails() throws Exception {
+        PerceptualHashService failingHashService = new PerceptualHashService() {
+            @Override
+            public String calculate(java.io.InputStream imageStream) {
+                throw new VerificationException("simulated pHash failure");
+            }
+
+            @Override
+            public int hammingDistance(String hashA, String hashB) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean isValidHash(String hash) {
+                return false;
+            }
+        };
+        AssetUploadServiceImpl failingUploadService = new AssetUploadServiceImpl(
+                repositoryStub.createProxy(),
+                new UploadFileValidator(uploadProperties),
+                new LocalAssetStorageService(uploadProperties),
+                new Sha256ServiceImpl(),
+                failingHashService);
+        AssetUploadRequest request = request(
+                "Image",
+                null,
+                new MockMultipartFile("file", "image.png", "image/png", createImage("png")));
+
+        assertThrows(VerificationException.class,
+                () -> failingUploadService.uploadImage(request));
+
+        assertNull(repositoryStub.savedAsset);
         assertDirectoryEmpty(uploadRoot.resolve("temp"));
         assertDirectoryEmpty(uploadRoot.resolve("images"));
     }

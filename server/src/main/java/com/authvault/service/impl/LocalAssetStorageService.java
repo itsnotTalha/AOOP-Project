@@ -4,6 +4,8 @@ import com.authvault.config.UploadProperties;
 import com.authvault.exception.FileStorageException;
 import com.authvault.exception.ResourceNotFoundException;
 import com.authvault.service.AssetStorageService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -17,12 +19,14 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class LocalAssetStorageService implements AssetStorageService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(LocalAssetStorageService.class);
     private static final String TEMP_DIRECTORY = "temp";
     private static final String IMAGE_DIRECTORY = "images";
     private static final String DOCUMENT_DIRECTORY = "documents";
@@ -30,6 +34,7 @@ public class LocalAssetStorageService implements AssetStorageService {
     private static final Set<String> DOCUMENT_EXTENSIONS = Set.of("pdf");
     private static final Set<String> ALL_EXTENSIONS = Set.of("jpg", "jpeg", "png", "pdf");
     private static final int NAME_GENERATION_ATTEMPTS = 10;
+    private static final String DELETION_SUFFIX = ".delete";
 
     private final Path uploadRoot;
     private final Path tempRoot;
@@ -141,6 +146,79 @@ public class LocalAssetStorageService implements AssetStorageService {
         }
     }
 
+    @Override
+    public Optional<StagedDeletion> stageStoredAssetForDeletion(String storageKey) {
+        requireManagedDirectory(tempRoot);
+        Path storedFile = resolveCommittedStorageKey(storageKey);
+        try {
+            if (Files.notExists(storedFile, LinkOption.NOFOLLOW_LINKS)) {
+                return Optional.empty();
+            }
+            if (Files.isSymbolicLink(storedFile)
+                    || !Files.isRegularFile(storedFile, LinkOption.NOFOLLOW_LINKS)
+                    || !storedFile.toRealPath().equals(storedFile)) {
+                throw new FileStorageException("Stored asset location is unsafe");
+            }
+
+            for (int attempt = 0; attempt < NAME_GENERATION_ATTEMPTS; attempt++) {
+                String quarantineFilename = UUID.randomUUID() + DELETION_SUFFIX;
+                Path quarantineFile = resolveInside(tempRoot, quarantineFilename);
+                try {
+                    moveWithAtomicFallback(storedFile, quarantineFile);
+                    return Optional.of(new StagedDeletion(storageKey, quarantineFilename));
+                } catch (FileAlreadyExistsException ignored) {
+                    // Generate another UUID without overwriting an existing staged deletion.
+                }
+            }
+            throw new FileStorageException("Could not allocate a staged deletion filename");
+        } catch (FileStorageException exception) {
+            throw exception;
+        } catch (IOException exception) {
+            throw new FileStorageException("Could not stage stored asset for deletion", exception);
+        }
+    }
+
+    @Override
+    public void restoreStagedDeletion(StagedDeletion stagedDeletion) {
+        if (stagedDeletion == null) {
+            return;
+        }
+        requireManagedDirectory(tempRoot);
+        Path originalFile = resolveCommittedStorageKey(stagedDeletion.originalStorageKey());
+        Path quarantineFile = resolveQuarantineFile(stagedDeletion.quarantineFilename());
+        try {
+            if (Files.notExists(quarantineFile, LinkOption.NOFOLLOW_LINKS)) {
+                return;
+            }
+            if (Files.exists(originalFile, LinkOption.NOFOLLOW_LINKS)) {
+                throw new FileStorageException("Could not restore staged asset file");
+            }
+            if (Files.isSymbolicLink(quarantineFile)
+                    || !Files.isRegularFile(quarantineFile, LinkOption.NOFOLLOW_LINKS)
+                    || !quarantineFile.toRealPath().equals(quarantineFile)) {
+                throw new FileStorageException("Staged asset file is unsafe");
+            }
+            moveWithAtomicFallback(quarantineFile, originalFile);
+        } catch (FileStorageException exception) {
+            throw exception;
+        } catch (IOException exception) {
+            throw new FileStorageException("Could not restore staged asset file", exception);
+        }
+    }
+
+    @Override
+    public void deleteStagedDeletionQuietly(StagedDeletion stagedDeletion) {
+        if (stagedDeletion == null) {
+            return;
+        }
+        try {
+            requireManagedDirectory(tempRoot);
+            Files.deleteIfExists(resolveQuarantineFile(stagedDeletion.quarantineFilename()));
+        } catch (IOException | RuntimeException exception) {
+            LOGGER.warn("Could not permanently clean a staged asset deletion");
+        }
+    }
+
     private StoredAsset commit(
             Path validatedTempFile,
             String extension,
@@ -239,6 +317,14 @@ public class LocalAssetStorageService implements AssetStorageService {
             throw new FileStorageException("Invalid stored asset location");
         }
         return resolved;
+    }
+
+    private Path resolveQuarantineFile(String quarantineFilename) {
+        if (quarantineFilename == null
+                || !quarantineFilename.matches("[0-9a-fA-F-]{36}\\.delete")) {
+            throw new FileStorageException("Invalid staged asset deletion");
+        }
+        return resolveInside(tempRoot, quarantineFilename);
     }
 
     private String requireAllowedExtension(String extension, Set<String> allowedExtensions) {

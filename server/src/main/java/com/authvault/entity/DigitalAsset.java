@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -77,7 +78,8 @@ public class DigitalAsset {
     @Column(name = "sha256_hash", nullable = false, unique = true, length = 64)
     private String sha256Hash;
 
-    @Column(name = "perceptual_hash")
+    @Column(name = "perceptual_hash", length = 16)
+    @Pattern(regexp = "^[0-9a-f]{16}$")
     private String perceptualHash;
 
     @Column(name = "metadata_json")

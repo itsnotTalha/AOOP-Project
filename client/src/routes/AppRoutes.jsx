@@ -5,6 +5,7 @@ import DashboardLayout from '../layouts/DashboardLayout'
 import MainLayout from '../layouts/MainLayout'
 import Dashboard from '../pages/Dashboard/Dashboard'
 import Assets from '../pages/Assets/Assets'
+import AssetDetails from '../pages/Assets/AssetDetails'
 import Landing from '../pages/Landing/Landing'
 import Login from '../pages/Login/Login'
 import Register from '../pages/Register/Register'
@@ -26,6 +27,7 @@ export default function AppRoutes() {
         <Route element={<DashboardLayout />}>
           <Route element={<Dashboard />} path="/dashboard" />
           <Route element={<Assets />} path="/assets" />
+          <Route element={<AssetDetails />} path="/assets/:assetId" />
         </Route>
       </Route>
     </Routes>

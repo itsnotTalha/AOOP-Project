@@ -27,3 +27,6 @@ replay_pid*
 
 # Frontend build output
 client/dist/
+
+# Local AI model assets are manually provisioned and must never be committed.
+ai-service/model-assets/

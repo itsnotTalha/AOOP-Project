@@ -1,11 +1,21 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Check, CheckCircle2, Clipboard, ShieldCheck } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 
 import * as assetService from '../../services/assetService'
+import AssetFilters from './AssetFilters'
 import AssetList from './AssetList'
 import AssetUploadForm from './AssetUploadForm'
 
 export default function Assets() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const currentQuery = searchParams.toString()
+  const filters = useMemo(
+    () => readFilters(new URLSearchParams(currentQuery)),
+    [currentQuery],
+  )
+  const canonicalQuery = buildSearchParams(filters).toString()
+  const [searchValue, setSearchValue] = useState(filters.search)
   const [assets, setAssets] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [listError, setListError] = useState('')
@@ -14,35 +24,79 @@ export default function Assets() {
   const [verifyingAssetId, setVerifyingAssetId] = useState(null)
   const [verificationResults, setVerificationResults] = useState({})
   const [verificationErrors, setVerificationErrors] = useState({})
+  const requestSequence = useRef(0)
+
+  const criteria = useMemo(() => ({
+    search: filters.search || undefined,
+    type: filters.type || undefined,
+    status: filters.status || undefined,
+    sort: filters.sort === 'oldest' ? 'oldest' : undefined,
+  }), [filters.search, filters.sort, filters.status, filters.type])
+  const criteriaRef = useRef(criteria)
+  criteriaRef.current = criteria
+
+  const hasRestrictiveFilters = Boolean(filters.search || filters.type || filters.status)
+  const hasActiveFilters = hasRestrictiveFilters || filters.sort === 'oldest'
+  const listQuery = canonicalQuery ? `?${canonicalQuery}` : ''
 
   const loadAssets = useCallback(async ({ silent = false } = {}) => {
+    const requestId = ++requestSequence.current
     if (!silent) setIsLoading(true)
     setListError('')
 
     try {
-      setAssets(await assetService.getAssets())
+      const result = await assetService.getAssets(criteriaRef.current)
+      if (requestId === requestSequence.current) setAssets(result)
     } catch (error) {
-      setListError(error.message || 'Assets could not be loaded. Please try again.')
+      if (requestId === requestSequence.current) {
+        setListError(error.message || 'Assets could not be loaded. Please try again.')
+      }
     } finally {
-      if (!silent) setIsLoading(false)
+      if (requestId === requestSequence.current) setIsLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    let active = true
+    loadAssets()
+  }, [criteria, loadAssets])
 
-    assetService.getAssets()
-      .then((result) => active && setAssets(result))
-      .catch((error) => active && setListError(error.message || 'Assets could not be loaded. Please try again.'))
-      .finally(() => active && setIsLoading(false))
+  useEffect(() => {
+    if (currentQuery !== canonicalQuery) {
+      setSearchParams(buildSearchParams(filters), { replace: true })
+    }
+  }, [canonicalQuery, currentQuery, filters, setSearchParams])
 
-    return () => { active = false }
-  }, [])
+  useEffect(() => {
+    setSearchValue(filters.search)
+  }, [filters.search])
+
+  useEffect(() => {
+    const normalizedSearch = searchValue.trim()
+    if (normalizedSearch === filters.search) return undefined
+
+    const timer = window.setTimeout(() => {
+      setSearchParams(buildSearchParams({ ...filters, search: normalizedSearch }))
+    }, 350)
+
+    return () => window.clearTimeout(timer)
+  }, [filters, searchValue, setSearchParams])
+
+  const handleFilterChange = (name, value) => {
+    setSearchParams(buildSearchParams({
+      ...filters,
+      search: searchValue.trim(),
+      [name]: value,
+    }))
+  }
+
+  const clearFilters = () => {
+    setSearchValue('')
+    setSearchParams(new URLSearchParams())
+  }
 
   const handleUploaded = (asset) => {
     setUploadedAsset(asset)
     setCopiedHash(false)
-    setAssets((current) => [asset, ...current.filter((item) => item.assetId !== asset.assetId)])
     loadAssets({ silent: true })
   }
 
@@ -106,19 +160,62 @@ export default function Assets() {
           )}
         </div>
 
-        <AssetList
-          assets={assets}
-          error={listError}
-          isLoading={isLoading}
-          onRetry={() => loadAssets()}
-          onVerify={handleVerify}
-          verificationErrors={verificationErrors}
-          verificationResults={verificationResults}
-          verifyingAssetId={verifyingAssetId}
-        />
+        <div className="space-y-4">
+          <AssetFilters
+            filters={filters}
+            hasActiveFilters={hasActiveFilters}
+            onChange={handleFilterChange}
+            onClear={clearFilters}
+            onSearchChange={setSearchValue}
+            searchValue={searchValue}
+          />
+          <AssetList
+            assets={assets}
+            error={listError}
+            isFiltered={hasRestrictiveFilters}
+            isLoading={isLoading}
+            listQuery={listQuery}
+            onClearFilters={clearFilters}
+            onRetry={() => loadAssets()}
+            onVerify={handleVerify}
+            sort={filters.sort}
+            verificationErrors={verificationErrors}
+            verificationResults={verificationResults}
+            verifyingAssetId={verifyingAssetId}
+          />
+        </div>
       </div>
     </div>
   )
+}
+
+const VALID_TYPES = new Set(['IMAGE', 'DOCUMENT'])
+const VALID_STATUSES = new Set(['PENDING', 'VERIFIED', 'REJECTED'])
+
+function readFilters(searchParams) {
+  const search = (searchParams.get('search') || '').trim()
+  const typeValue = searchParams.get('type') || ''
+  const statusValue = searchParams.get('status') || ''
+  const sortValue = searchParams.get('sort') || 'newest'
+
+  return {
+    search,
+    type: VALID_TYPES.has(typeValue) ? typeValue : '',
+    status: VALID_STATUSES.has(statusValue) ? statusValue : '',
+    sort: sortValue === 'oldest' ? 'oldest' : 'newest',
+  }
+}
+
+function buildSearchParams({ search, type, status, sort }) {
+  const params = new URLSearchParams()
+  const normalizedSearch = typeof search === 'string' ? search.trim() : ''
+
+  if (normalizedSearch) params.set('search', normalizedSearch)
+  if (VALID_TYPES.has(type)) params.set('type', type)
+  if (VALID_STATUSES.has(status)) params.set('status', status)
+  if (sort === 'oldest') params.set('sort', 'oldest')
+
+  return params
 }
 
 function UploadSuccessCard({ asset, copied, onCopy }) {

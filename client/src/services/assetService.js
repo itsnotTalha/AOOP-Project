@@ -21,8 +21,10 @@ export function uploadDocument(asset, onUploadProgress) {
   return uploadAsset(`${ASSET_PATH}/documents`, asset, onUploadProgress)
 }
 
-export async function getAssets() {
-  const data = await requestData(() => api.get(ASSET_PATH))
+export async function getAssets(criteria = {}) {
+  const data = await requestData(() => api.get(ASSET_PATH, {
+    params: buildAssetListParams(criteria),
+  }))
   return Array.isArray(data) ? data : []
 }
 
@@ -34,6 +36,21 @@ export function verifyIntegrity(assetId) {
   return requestData(() => api.post(
     `${ASSET_PATH}/${requireAssetId(assetId)}/verify-integrity`,
   ))
+}
+
+export async function getVerificationHistory(assetId) {
+  const data = await requestData(() => api.get(
+    `${ASSET_PATH}/${requireAssetId(assetId)}/verification-history`,
+  ))
+  return Array.isArray(data) ? data : []
+}
+
+export async function deleteAsset(assetId) {
+  try {
+    await api.delete(`${ASSET_PATH}/${requireAssetId(assetId)}`)
+  } catch (error) {
+    throw normalizeAssetError(error)
+  }
 }
 
 export async function downloadAsset(assetId) {
@@ -87,6 +104,22 @@ async function requestData(request) {
   } catch (error) {
     throw normalizeAssetError(error)
   }
+}
+
+function buildAssetListParams(criteria) {
+  if (criteria == null || typeof criteria !== 'object') return undefined
+
+  const params = {}
+  for (const key of ['type', 'status', 'search', 'sort']) {
+    const value = criteria[key]
+    if (typeof value === 'string') {
+      const normalizedValue = value.trim()
+      if (normalizedValue && !(key === 'sort' && normalizedValue === 'newest')) {
+        params[key] = normalizedValue
+      }
+    }
+  }
+  return Object.keys(params).length > 0 ? params : undefined
 }
 
 function requireAssetId(assetId) {

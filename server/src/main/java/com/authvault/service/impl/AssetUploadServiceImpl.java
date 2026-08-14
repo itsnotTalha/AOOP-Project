@@ -10,10 +10,12 @@ import com.authvault.exception.BadRequestException;
 import com.authvault.exception.DuplicateFileException;
 import com.authvault.exception.FileSizeLimitExceededException;
 import com.authvault.exception.FileStorageException;
+import com.authvault.exception.VerificationException;
 import com.authvault.repository.DigitalAssetRepository;
 import com.authvault.security.util.SecurityUtils;
 import com.authvault.service.AssetStorageService;
 import com.authvault.service.AssetUploadService;
+import com.authvault.service.PerceptualHashService;
 import com.authvault.service.Sha256Service;
 import com.authvault.validation.PreparedUploadFile;
 import com.authvault.validation.UploadFileValidator;
@@ -43,16 +45,19 @@ public class AssetUploadServiceImpl implements AssetUploadService {
     private final UploadFileValidator uploadFileValidator;
     private final AssetStorageService assetStorageService;
     private final Sha256Service sha256Service;
+    private final PerceptualHashService perceptualHashService;
 
     public AssetUploadServiceImpl(
             DigitalAssetRepository digitalAssetRepository,
             UploadFileValidator uploadFileValidator,
             AssetStorageService assetStorageService,
-            Sha256Service sha256Service) {
+            Sha256Service sha256Service,
+            PerceptualHashService perceptualHashService) {
         this.digitalAssetRepository = digitalAssetRepository;
         this.uploadFileValidator = uploadFileValidator;
         this.assetStorageService = assetStorageService;
         this.sha256Service = sha256Service;
+        this.perceptualHashService = perceptualHashService;
     }
 
     @Override
@@ -94,6 +99,10 @@ public class AssetUploadServiceImpl implements AssetUploadService {
                 throw new DuplicateFileException();
             }
 
+            String perceptualHash = assetType == DigitalAsset.AssetType.IMAGE
+                    ? calculatePerceptualHash(temporaryFile)
+                    : null;
+
             storedAsset = commit(temporaryFile, validatedFile, assetType);
             registerRollbackCleanup(storedAsset);
             DigitalAsset asset = createAsset(
@@ -101,6 +110,7 @@ public class AssetUploadServiceImpl implements AssetUploadService {
                     metadata,
                     validatedFile,
                     streamedUpload.sha256Hash(),
+                    perceptualHash,
                     storedAsset,
                     assetType);
 
@@ -199,6 +209,20 @@ public class AssetUploadServiceImpl implements AssetUploadService {
         };
     }
 
+    private String calculatePerceptualHash(Path validatedTemporaryFile) {
+        try (InputStream inputStream = Files.newInputStream(validatedTemporaryFile)) {
+            String perceptualHash = perceptualHashService.calculate(inputStream);
+            if (!perceptualHashService.isValidHash(perceptualHash)) {
+                throw new VerificationException("Calculated perceptual hash has an invalid format");
+            }
+            return perceptualHash;
+        } catch (VerificationException exception) {
+            throw exception;
+        } catch (IOException exception) {
+            throw new VerificationException("Could not calculate perceptual hash for uploaded image", exception);
+        }
+    }
+
     private void registerRollbackCleanup(AssetStorageService.StoredAsset storedAsset) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             return;
@@ -219,6 +243,7 @@ public class AssetUploadServiceImpl implements AssetUploadService {
             NormalizedMetadata metadata,
             ValidatedUploadFile validatedFile,
             String sha256Hash,
+            String perceptualHash,
             AssetStorageService.StoredAsset storedAsset,
             DigitalAsset.AssetType assetType) {
         LocalDateTime now = LocalDateTime.now();
@@ -235,6 +260,7 @@ public class AssetUploadServiceImpl implements AssetUploadService {
         asset.setMimeType(validatedFile.mimeType());
         asset.setFileSize(validatedFile.fileSize());
         asset.setSha256Hash(sha256Hash);
+        asset.setPerceptualHash(perceptualHash);
         asset.setUploadDate(now);
         asset.setVerificationStatus(DigitalAsset.VerificationStatus.VERIFIED);
 

@@ -24,5 +24,6 @@ public class AssetDetailResponse {
     private String sha256Hash;
     private String verificationStatus;
     private LocalDateTime uploadDate;
+    private LocalDateTime lastVerifiedAt;
     private List<VerificationHistoryResponse> verificationHistory;
 }

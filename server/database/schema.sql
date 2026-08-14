@@ -46,7 +46,10 @@ CREATE TABLE digital_assets (
     sha256_hash         TEXT NOT NULL UNIQUE
                         CHECK (length(sha256_hash) = 64 AND
                                sha256_hash NOT GLOB '*[^0-9a-f]*'),
-    perceptual_hash     TEXT,
+    perceptual_hash     TEXT
+                        CHECK (perceptual_hash IS NULL OR
+                               (length(perceptual_hash) = 16 AND
+                                perceptual_hash NOT GLOB '*[^0-9a-f]*')),
     metadata_json       TEXT,
     upload_date         TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     verification_status TEXT NOT NULL DEFAULT 'PENDING'

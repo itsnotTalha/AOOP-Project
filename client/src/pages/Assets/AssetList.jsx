@@ -2,18 +2,25 @@ import {
   AlertCircle,
   CheckCircle2,
   FileText,
+  Search,
   Image as ImageIcon,
   LoaderCircle,
+  Eye,
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export default function AssetList({
   assets,
   error,
+  isFiltered,
   isLoading,
+  listQuery,
+  onClearFilters,
   onRetry,
   onVerify,
+  sort,
   verificationErrors,
   verificationResults,
   verifyingAssetId,
@@ -24,11 +31,11 @@ export default function AssetList({
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-600">Asset library</p>
           <h2 className="mt-1.5 text-xl font-bold tracking-tight">Your uploaded assets</h2>
-          <p className="mt-1 text-sm text-slate-500">Newest assets appear first.</p>
+          <p className="mt-1 text-sm text-slate-500">{sort === 'oldest' ? 'Oldest assets appear first.' : 'Newest assets appear first.'}</p>
         </div>
         {!isLoading && !error && (
           <span className="w-fit rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
-            {assets.length} {assets.length === 1 ? 'asset' : 'assets'}
+            {assets.length} {assets.length === 1 ? 'asset' : 'assets'}{isFiltered ? ' found' : ''}
           </span>
         )}
       </div>
@@ -46,7 +53,18 @@ export default function AssetList({
         </div>
       )}
 
-      {!isLoading && !error && assets.length === 0 && (
+      {!isLoading && !error && assets.length === 0 && isFiltered && (
+        <div className="flex flex-col items-center px-6 py-16 text-center">
+          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-slate-100 text-slate-500"><Search size={25} /></span>
+          <h3 className="mt-4 font-bold">No assets match your filters</h3>
+          <p className="mt-1 max-w-md text-sm text-slate-500">Try a different search, type, or verification status.</p>
+          <button className="mt-5 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 outline-none hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2" onClick={onClearFilters} type="button">
+            <RefreshCw size={16} /> Clear filters
+          </button>
+        </div>
+      )}
+
+      {!isLoading && !error && assets.length === 0 && !isFiltered && (
         <div className="flex flex-col items-center px-6 py-16 text-center">
           <span className="grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600"><ShieldCheck size={25} /></span>
           <h3 className="mt-4 font-bold">No assets yet</h3>
@@ -62,6 +80,7 @@ export default function AssetList({
               error={verificationErrors[asset.assetId]}
               isVerifying={verifyingAssetId === asset.assetId}
               key={asset.assetId}
+              listQuery={listQuery}
               onVerify={() => onVerify(asset.assetId)}
               verification={verificationResults[asset.assetId]}
             />
@@ -72,7 +91,7 @@ export default function AssetList({
   )
 }
 
-function AssetRow({ asset, error, isVerifying, onVerify, verification }) {
+function AssetRow({ asset, error, isVerifying, listQuery, onVerify, verification }) {
   const isImage = asset.assetType === 'IMAGE'
 
   return (
@@ -96,15 +115,23 @@ function AssetRow({ asset, error, isVerifying, onVerify, verification }) {
           </div>
         </div>
 
-        <button
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60 xl:w-auto"
-          disabled={isVerifying}
-          onClick={onVerify}
-          type="button"
-        >
-          {isVerifying ? <LoaderCircle className="animate-spin" size={17} /> : <ShieldCheck size={17} />}
-          {isVerifying ? 'Verifying…' : 'Verify integrity'}
-        </button>
+        <div className="flex w-full flex-col gap-2 sm:flex-row xl:w-auto">
+          <Link
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 sm:w-auto"
+            to={`/assets/${encodeURIComponent(asset.assetId)}${listQuery}`}
+          >
+            <Eye size={17} /> View details
+          </Link>
+          <button
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            disabled={isVerifying}
+            onClick={onVerify}
+            type="button"
+          >
+            {isVerifying ? <LoaderCircle className="animate-spin" size={17} /> : <ShieldCheck size={17} />}
+            {isVerifying ? 'Verifying…' : 'Verify integrity'}
+          </button>
+        </div>
       </div>
 
       {error && (

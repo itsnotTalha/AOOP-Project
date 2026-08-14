@@ -6,17 +6,20 @@ import com.authvault.dto.asset.VerificationHistoryResponse;
 import com.authvault.entity.DigitalAsset;
 import com.authvault.entity.User;
 import com.authvault.entity.VerificationHistory;
+import com.authvault.exception.BadRequestException;
 import com.authvault.exception.ResourceNotFoundException;
 import com.authvault.repository.DigitalAssetRepository;
 import com.authvault.repository.VerificationHistoryRepository;
 import com.authvault.security.util.SecurityUtils;
 import com.authvault.service.AssetQueryService;
 import com.authvault.service.AssetStorageService;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class AssetQueryServiceImpl implements AssetQueryService {
@@ -38,9 +41,35 @@ public class AssetQueryServiceImpl implements AssetQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AssetResponse> listOwnedAssets() {
+    public List<AssetResponse> listOwnedAssets(
+            String type,
+            String status,
+            String search,
+            String sort) {
         User currentUser = SecurityUtils.getCurrentUser();
-        return digitalAssetRepository.findByCurrentOwnerOrderByUploadDateDesc(currentUser)
+        DigitalAsset.AssetType assetType = parseAssetType(type);
+        DigitalAsset.VerificationStatus verificationStatus = parseVerificationStatus(status);
+        String normalizedSearch = normalizeSearch(search);
+        Sort requestedSort = parseSort(sort);
+
+        Specification<DigitalAsset> specification = (root, query, builder) ->
+                builder.equal(root.get("currentOwner"), currentUser);
+        if (assetType != null) {
+            specification = specification.and((root, query, builder) ->
+                    builder.equal(root.get("assetType"), assetType));
+        }
+        if (verificationStatus != null) {
+            specification = specification.and((root, query, builder) ->
+                    builder.equal(root.get("verificationStatus"), verificationStatus));
+        }
+        if (normalizedSearch != null) {
+            String pattern = "%" + escapeLikePattern(normalizedSearch.toLowerCase(Locale.ROOT)) + "%";
+            specification = specification.and((root, query, builder) -> builder.or(
+                    builder.like(builder.lower(root.get("title")), pattern, '\\'),
+                    builder.like(builder.lower(root.get("originalFilename")), pattern, '\\')));
+        }
+
+        return digitalAssetRepository.findAll(specification, requestedSort)
                 .stream()
                 .map(this::toAssetResponse)
                 .toList();
@@ -50,11 +79,15 @@ public class AssetQueryServiceImpl implements AssetQueryService {
     @Transactional(readOnly = true)
     public AssetDetailResponse getOwnedAsset(String assetId) {
         DigitalAsset asset = findOwnedAsset(assetId);
-        List<VerificationHistoryResponse> history = verificationHistoryRepository.findByAsset(asset)
+        List<VerificationHistory> historyRecords =
+                verificationHistoryRepository.findByAssetOrderByVerifiedAtDesc(asset);
+        List<VerificationHistoryResponse> history = historyRecords
                 .stream()
-                .sorted(Comparator.comparing(VerificationHistory::getVerifiedAt).reversed())
                 .map(this::toHistoryResponse)
                 .toList();
+        var lastVerifiedAt = historyRecords.isEmpty()
+                ? null
+                : historyRecords.getFirst().getVerifiedAt();
 
         return AssetDetailResponse.builder()
                 .assetId(asset.getUuid())
@@ -67,8 +100,19 @@ public class AssetQueryServiceImpl implements AssetQueryService {
                 .sha256Hash(asset.getSha256Hash())
                 .verificationStatus(asset.getVerificationStatus().name())
                 .uploadDate(asset.getUploadDate())
+                .lastVerifiedAt(lastVerifiedAt)
                 .verificationHistory(history)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VerificationHistoryResponse> getOwnedAssetVerificationHistory(String assetId) {
+        DigitalAsset asset = findOwnedAsset(assetId);
+        return verificationHistoryRepository.findByAssetOrderByVerifiedAtDesc(asset)
+                .stream()
+                .map(this::toHistoryResponse)
+                .toList();
     }
 
     @Override
@@ -85,6 +129,50 @@ public class AssetQueryServiceImpl implements AssetQueryService {
         User currentUser = SecurityUtils.getCurrentUser();
         return digitalAssetRepository.findByUuidAndCurrentOwner(assetId, currentUser)
                 .orElseThrow(() -> new ResourceNotFoundException("Asset not found"));
+    }
+
+    private DigitalAsset.AssetType parseAssetType(String value) {
+        return parseEnum(value, DigitalAsset.AssetType.class, "type");
+    }
+
+    private DigitalAsset.VerificationStatus parseVerificationStatus(String value) {
+        return parseEnum(value, DigitalAsset.VerificationStatus.class, "status");
+    }
+
+    private <T extends Enum<T>> T parseEnum(String value, Class<T> enumType, String parameterName) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Enum.valueOf(enumType, value);
+        } catch (IllegalArgumentException exception) {
+            throw new BadRequestException("Invalid " + parameterName + " query parameter");
+        }
+    }
+
+    private Sort parseSort(String value) {
+        String requestedSort = value == null ? "newest" : value;
+        Sort.Direction direction = switch (requestedSort) {
+            case "newest" -> Sort.Direction.DESC;
+            case "oldest" -> Sort.Direction.ASC;
+            default -> throw new BadRequestException("Invalid sort query parameter");
+        };
+        return Sort.by(direction, "uploadDate").and(Sort.by(direction, "uuid"));
+    }
+
+    private String normalizeSearch(String search) {
+        if (search == null) {
+            return null;
+        }
+        String normalized = search.trim();
+        return normalized.isBlank() ? null : normalized;
+    }
+
+    private String escapeLikePattern(String value) {
+        return value
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     private AssetResponse toAssetResponse(DigitalAsset asset) {

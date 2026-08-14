@@ -11,4 +11,6 @@ public interface VerificationHistoryRepository extends JpaRepository<Verificatio
     List<VerificationHistory> findByAssetId(Long assetId);
 
     List<VerificationHistory> findByAsset(DigitalAsset asset);
+
+    List<VerificationHistory> findByAssetOrderByVerifiedAtDesc(DigitalAsset asset);
 }

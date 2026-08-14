@@ -4,10 +4,18 @@ import com.authvault.dto.asset.AssetResponse;
 import com.authvault.dto.asset.AssetDetailResponse;
 import com.authvault.dto.asset.AssetUploadRequest;
 import com.authvault.dto.asset.AssetVerificationResponse;
+import com.authvault.dto.asset.AssetAiAnalysisResponse;
+import com.authvault.dto.asset.VerificationHistoryResponse;
+import com.authvault.dto.asset.SimilarImagesResponse;
+import com.authvault.dto.asset.KnownOriginalComparisonResponse;
 import com.authvault.dto.common.ApiResponse;
 import com.authvault.service.AssetIntegrityService;
+import com.authvault.service.AssetManagementService;
 import com.authvault.service.AssetQueryService;
 import com.authvault.service.AssetUploadService;
+import com.authvault.service.AiAssetAnalysisService;
+import com.authvault.service.KnownOriginalCandidateService;
+import com.authvault.service.KnownOriginalComparisonService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.CacheControl;
@@ -16,11 +24,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -34,14 +44,26 @@ public class AssetUploadController {
     private final AssetUploadService assetUploadService;
     private final AssetIntegrityService assetIntegrityService;
     private final AssetQueryService assetQueryService;
+    private final AssetManagementService assetManagementService;
+    private final KnownOriginalCandidateService knownOriginalCandidateService;
+    private final KnownOriginalComparisonService knownOriginalComparisonService;
+    private final AiAssetAnalysisService aiAssetAnalysisService;
 
     public AssetUploadController(
             AssetUploadService assetUploadService,
             AssetIntegrityService assetIntegrityService,
-            AssetQueryService assetQueryService) {
+            AssetQueryService assetQueryService,
+            AssetManagementService assetManagementService,
+            KnownOriginalCandidateService knownOriginalCandidateService,
+            KnownOriginalComparisonService knownOriginalComparisonService,
+            AiAssetAnalysisService aiAssetAnalysisService) {
         this.assetUploadService = assetUploadService;
         this.assetIntegrityService = assetIntegrityService;
         this.assetQueryService = assetQueryService;
+        this.assetManagementService = assetManagementService;
+        this.knownOriginalCandidateService = knownOriginalCandidateService;
+        this.knownOriginalComparisonService = knownOriginalComparisonService;
+        this.aiAssetAnalysisService = aiAssetAnalysisService;
     }
 
     @PostMapping(value = "/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -67,8 +89,12 @@ public class AssetUploadController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<AssetResponse>>> listAssets() {
-        List<AssetResponse> assets = assetQueryService.listOwnedAssets();
+    public ResponseEntity<ApiResponse<List<AssetResponse>>> listAssets(
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String sort) {
+        List<AssetResponse> assets = assetQueryService.listOwnedAssets(type, status, search, sort);
         return ResponseEntity.ok(successResponse("Assets retrieved successfully", assets));
     }
 
@@ -77,6 +103,46 @@ public class AssetUploadController {
             @PathVariable String assetId) {
         AssetDetailResponse asset = assetQueryService.getOwnedAsset(assetId);
         return ResponseEntity.ok(successResponse("Asset retrieved successfully", asset));
+    }
+
+    @GetMapping("/{assetId}/verification-history")
+    public ResponseEntity<ApiResponse<List<VerificationHistoryResponse>>> getVerificationHistory(
+            @PathVariable String assetId) {
+        List<VerificationHistoryResponse> history =
+                assetQueryService.getOwnedAssetVerificationHistory(assetId);
+        return ResponseEntity.ok(successResponse(
+                "Verification history retrieved successfully", history));
+    }
+
+    @GetMapping("/{assetId}/similar-images")
+    public ResponseEntity<ApiResponse<SimilarImagesResponse>> getSimilarImages(
+            @PathVariable String assetId) {
+        SimilarImagesResponse matches = knownOriginalCandidateService.findSimilarImages(assetId);
+        return ResponseEntity.ok(successResponse(
+                "Similar image candidates retrieved successfully", matches));
+    }
+
+    @PostMapping("/{assetId}/compare-known-original")
+    public ResponseEntity<ApiResponse<KnownOriginalComparisonResponse>> compareKnownOriginal(
+            @PathVariable String assetId) {
+        KnownOriginalComparisonResponse comparison =
+                knownOriginalComparisonService.compareWithKnownOriginal(assetId);
+        return ResponseEntity.ok(successResponse(
+                "Known-original comparison completed", comparison));
+    }
+
+    @PostMapping("/{assetId}/analyze-ai")
+    public ResponseEntity<ApiResponse<AssetAiAnalysisResponse>> analyzeAi(
+            @PathVariable String assetId) {
+        AssetAiAnalysisResponse analysis = aiAssetAnalysisService.analyzeOwnedImage(assetId);
+        return ResponseEntity.ok(successResponse(
+                "AI generation analysis completed", analysis));
+    }
+
+    @DeleteMapping("/{assetId}")
+    public ResponseEntity<Void> deleteAsset(@PathVariable String assetId) {
+        assetManagementService.deleteOwnedAsset(assetId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{assetId}/download")

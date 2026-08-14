@@ -4,6 +4,7 @@ import com.authvault.entity.DigitalAsset;
 import com.authvault.entity.User;
 import com.authvault.entity.VerificationHistory;
 import com.authvault.repository.DigitalAssetRepository;
+import com.authvault.repository.DocumentRepository;
 import com.authvault.repository.UserRepository;
 import com.authvault.repository.VerificationHistoryRepository;
 import com.authvault.security.jwt.JwtService;
@@ -40,7 +41,9 @@ import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -68,6 +71,9 @@ class AssetUploadControllerIntegrationTest {
 
     @Autowired
     private DigitalAssetRepository digitalAssetRepository;
+
+    @Autowired
+    private DocumentRepository documentRepository;
 
     @Autowired
     private VerificationHistoryRepository verificationHistoryRepository;
@@ -133,6 +139,10 @@ class AssetUploadControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.storagePath").doesNotExist())
                 .andExpect(jsonPath("$.data.storedFilename").doesNotExist());
+
+        DigitalAsset stored = digitalAssetRepository
+                .findByCurrentOwnerOrderByUploadDateDesc(currentUser).getFirst();
+        assertTrue(stored.getPerceptualHash().matches("[0-9a-f]{16}"));
     }
 
     @Test
@@ -149,6 +159,10 @@ class AssetUploadControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.originalFilename").value("photo.jpeg"))
                 .andExpect(jsonPath("$.data.mimeType").value("image/jpeg"))
                 .andExpect(jsonPath("$.data.verificationStatus").value("VERIFIED"));
+
+        DigitalAsset stored = digitalAssetRepository
+                .findByCurrentOwnerOrderByUploadDateDesc(currentUser).getFirst();
+        assertTrue(stored.getPerceptualHash().matches("[0-9a-f]{16}"));
     }
 
     @Test
@@ -165,6 +179,10 @@ class AssetUploadControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.originalFilename").value("report.pdf"))
                 .andExpect(jsonPath("$.data.mimeType").value("application/pdf"))
                 .andExpect(jsonPath("$.data.verificationStatus").value("VERIFIED"));
+
+        DigitalAsset stored = digitalAssetRepository
+                .findByCurrentOwnerOrderByUploadDateDesc(currentUser).getFirst();
+        org.junit.jupiter.api.Assertions.assertNull(stored.getPerceptualHash());
     }
 
     @Test
@@ -357,6 +375,145 @@ class AssetUploadControllerIntegrationTest {
     }
 
     @Test
+    void listsOldestAssetsFirstWhenRequested() throws Exception {
+        DigitalAsset older = createAsset(
+                currentUser, "Older", "older.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now().minusDays(2));
+        DigitalAsset newer = createAsset(
+                currentUser, "Newer", "newer.pdf", DigitalAsset.AssetType.DOCUMENT,
+                DigitalAsset.VerificationStatus.PENDING, LocalDateTime.now());
+
+        mockMvc.perform(get("/api/v1/assets")
+                        .param("sort", "oldest")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].assetId").value(older.getUuid()))
+                .andExpect(jsonPath("$.data[1].assetId").value(newer.getUuid()));
+    }
+
+    @Test
+    void filtersAssetsByImageAndDocumentType() throws Exception {
+        DigitalAsset image = createAsset(
+                currentUser, "Image", "image.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+        DigitalAsset document = createAsset(
+                currentUser, "Document", "document.pdf", DigitalAsset.AssetType.DOCUMENT,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+
+        mockMvc.perform(get("/api/v1/assets")
+                        .param("type", "IMAGE")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].assetId").value(image.getUuid()));
+
+        mockMvc.perform(get("/api/v1/assets")
+                        .param("type", "DOCUMENT")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].assetId").value(document.getUuid()));
+    }
+
+    @Test
+    void filtersAssetsByVerificationStatus() throws Exception {
+        DigitalAsset rejected = createAsset(
+                currentUser, "Rejected", "rejected.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.REJECTED, LocalDateTime.now());
+        createAsset(
+                currentUser, "Verified", "verified.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+
+        mockMvc.perform(get("/api/v1/assets")
+                        .param("status", "REJECTED")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].assetId").value(rejected.getUuid()));
+    }
+
+    @Test
+    void searchesTitleAndOriginalFilenameCaseInsensitively() throws Exception {
+        DigitalAsset match = createAsset(
+                currentUser, "Quarterly Evidence", "financial-SUMMARY.pdf",
+                DigitalAsset.AssetType.DOCUMENT, DigitalAsset.VerificationStatus.VERIFIED,
+                LocalDateTime.now());
+        createAsset(
+                currentUser, "Unrelated", "other.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+
+        mockMvc.perform(get("/api/v1/assets")
+                        .param("search", "  quarterly  ")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].assetId").value(match.getUuid()));
+
+        mockMvc.perform(get("/api/v1/assets")
+                        .param("search", "summary")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].assetId").value(match.getUuid()));
+
+        mockMvc.perform(get("/api/v1/assets")
+                        .param("search", "qUaRtErLy")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].assetId").value(match.getUuid()));
+    }
+
+    @Test
+    void combinesListFiltersAndTreatsBlankSearchAsAbsent() throws Exception {
+        DigitalAsset match = createAsset(
+                currentUser, "Evidence image", "evidence.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+        createAsset(
+                currentUser, "Evidence document", "evidence.pdf", DigitalAsset.AssetType.DOCUMENT,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+        createAsset(
+                currentUser, "Rejected evidence", "rejected.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.REJECTED, LocalDateTime.now());
+
+        mockMvc.perform(get("/api/v1/assets")
+                        .param("type", "IMAGE")
+                        .param("status", "VERIFIED")
+                        .param("search", "evidence")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].assetId").value(match.getUuid()));
+
+        mockMvc.perform(get("/api/v1/assets")
+                        .param("search", "   ")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(3));
+    }
+
+    @Test
+    void rejectsInvalidListQueryParameters() throws Exception {
+        mockMvc.perform(get("/api/v1/assets")
+                        .param("type", "image")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+
+        mockMvc.perform(get("/api/v1/assets")
+                        .param("status", "APPROVED")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+
+        mockMvc.perform(get("/api/v1/assets")
+                        .param("sort", "recent")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
     void returnsOwnedAssetDetailWithVerificationHistory() throws Exception {
         String assetId = uploadPngAndReturnAssetId("detail.png", "Detail");
         mockMvc.perform(post("/api/v1/assets/{assetId}/verify-integrity", assetId)
@@ -376,11 +533,100 @@ class AssetUploadControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.sha256Hash", matchesPattern("[0-9a-f]{64}")))
                 .andExpect(jsonPath("$.data.verificationStatus").value("VERIFIED"))
                 .andExpect(jsonPath("$.data.uploadDate").exists())
+                .andExpect(jsonPath("$.data.lastVerifiedAt").exists())
                 .andExpect(jsonPath("$.data.verificationHistory.length()").value(2))
                 .andExpect(jsonPath("$.data.verificationHistory[0].verificationMethod")
                         .value("SHA256_INTEGRITY"))
                 .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.storagePath").doesNotExist());
+    }
+
+    @Test
+    void assetDetailUsesNewestHistoryTimestampAsLastVerifiedAt() throws Exception {
+        DigitalAsset asset = createAsset(
+                currentUser, "Detail timestamps", "timestamps.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+        LocalDateTime olderTimestamp = LocalDateTime.of(2026, 1, 2, 10, 0, 1);
+        LocalDateTime newestTimestamp = LocalDateTime.of(2026, 2, 3, 11, 30, 2);
+        createHistory(asset, newestTimestamp, VerificationHistory.Result.VERIFIED, "Newest safe note");
+        createHistory(asset, olderTimestamp, VerificationHistory.Result.REJECTED, "Older safe note");
+
+        mockMvc.perform(get("/api/v1/assets/{assetId}", asset.getUuid())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.lastVerifiedAt").value(newestTimestamp.toString()));
+    }
+
+    @Test
+    void assetDetailHasNullLastVerifiedAtWhenHistoryIsEmpty() throws Exception {
+        DigitalAsset asset = createAsset(
+                currentUser, "No history", "no-history.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.PENDING, LocalDateTime.now());
+
+        mockMvc.perform(get("/api/v1/assets/{assetId}", asset.getUuid())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.lastVerifiedAt").doesNotExist())
+                .andExpect(jsonPath("$.data.verificationHistory.length()").value(0));
+    }
+
+    @Test
+    void ownerRetrievesSafeVerificationHistoryNewestFirst() throws Exception {
+        DigitalAsset asset = createAsset(
+                currentUser, "History", "history.pdf", DigitalAsset.AssetType.DOCUMENT,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+        LocalDateTime olderTimestamp = LocalDateTime.of(2026, 3, 1, 9, 0, 1);
+        LocalDateTime newestTimestamp = LocalDateTime.of(2026, 3, 2, 9, 0, 2);
+        createHistory(asset, olderTimestamp, VerificationHistory.Result.REJECTED, "Older safe note");
+        createHistory(asset, newestTimestamp, VerificationHistory.Result.VERIFIED, "Newest safe note");
+
+        mockMvc.perform(get("/api/v1/assets/{assetId}/verification-history", asset.getUuid())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].verificationMethod").value("SHA256_INTEGRITY"))
+                .andExpect(jsonPath("$.data[0].result").value("VERIFIED"))
+                .andExpect(jsonPath("$.data[0].verifiedAt").value(newestTimestamp.toString()))
+                .andExpect(jsonPath("$.data[0].notes").value("Newest safe note"))
+                .andExpect(jsonPath("$.data[1].verifiedAt").value(olderTimestamp.toString()))
+                .andExpect(jsonPath("$.data[0].id").doesNotExist())
+                .andExpect(jsonPath("$.data[0].assetId").doesNotExist())
+                .andExpect(jsonPath("$.data[0].verifiedBy").doesNotExist())
+                .andExpect(jsonPath("$.data[0].storagePath").doesNotExist());
+    }
+
+    @Test
+    void ownerRetrievesEmptyVerificationHistory() throws Exception {
+        DigitalAsset asset = createAsset(
+                currentUser, "Empty history", "empty-history.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.PENDING, LocalDateTime.now());
+
+        mockMvc.perform(get("/api/v1/assets/{assetId}/verification-history", asset.getUuid())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    void otherUserCannotRetrieveVerificationHistory() throws Exception {
+        DigitalAsset asset = createAsset(
+                currentUser, "Private history", "private-history.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+        createHistory(asset, LocalDateTime.now(), VerificationHistory.Result.VERIFIED, "Safe note");
+
+        mockMvc.perform(get("/api/v1/assets/{assetId}/verification-history", asset.getUuid())
+                        .header(HttpHeaders.AUTHORIZATION, tokenFor(createUser())))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void nonexistentAssetHasNoVerificationHistory() throws Exception {
+        mockMvc.perform(get("/api/v1/assets/{assetId}/verification-history", UUID.randomUUID())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test
@@ -432,6 +678,350 @@ class AssetUploadControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/assets"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false));
+
+        mockMvc.perform(get("/api/v1/assets/{assetId}/verification-history", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void returnsOnlyPreviousOwnedImagesRankedByPerceptualDistance() throws Exception {
+        LocalDateTime targetTime = LocalDateTime.now();
+        DigitalAsset target = createAsset(
+                currentUser, "Target", "target.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, targetTime);
+        DigitalAsset closest = createAsset(
+                currentUser, "Closest", "closest.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, targetTime.minusDays(1));
+        DigitalAsset farther = createAsset(
+                currentUser, "Farther", "farther.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, targetTime.minusDays(2));
+        DigitalAsset document = createAsset(
+                currentUser, "Document", "document.pdf", DigitalAsset.AssetType.DOCUMENT,
+                DigitalAsset.VerificationStatus.VERIFIED, targetTime.minusDays(3));
+        DigitalAsset future = createAsset(
+                currentUser, "Future", "future.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, targetTime.plusDays(1));
+        DigitalAsset otherUsersImage = createAsset(
+                createUser(), "Other", "other.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, targetTime.minusDays(1));
+
+        target.setPerceptualHash("0000000000000000");
+        closest.setPerceptualHash("0000000000000001");
+        farther.setPerceptualHash("0000000000000007");
+        document.setPerceptualHash(null);
+        future.setPerceptualHash("0000000000000000");
+        otherUsersImage.setPerceptualHash("0000000000000000");
+        digitalAssetRepository.saveAllAndFlush(java.util.List.of(
+                target, closest, farther, document, future, otherUsersImage));
+
+        mockMvc.perform(get("/api/v1/assets/{assetId}/similar-images", target.getUuid())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.assetId").value(target.getUuid()))
+                .andExpect(jsonPath("$.data.perceptualHash").value("0000000000000000"))
+                .andExpect(jsonPath("$.data.closestMatches.length()").value(2))
+                .andExpect(jsonPath("$.data.closestMatches[0].matchedAssetId")
+                        .value(closest.getUuid()))
+                .andExpect(jsonPath("$.data.closestMatches[0].hammingDistance").value(1))
+                .andExpect(jsonPath("$.data.closestMatches[0].matchBand")
+                        .value("NEAR_DUPLICATE"))
+                .andExpect(jsonPath("$.data.closestMatches[1].matchedAssetId")
+                        .value(farther.getUuid()))
+                .andExpect(jsonPath("$.data.closestMatches[0].id").doesNotExist())
+                .andExpect(jsonPath("$.data.closestMatches[0].storagePath").doesNotExist())
+                .andExpect(jsonPath("$.data.closestMatches[0].storedFilename").doesNotExist());
+    }
+
+    @Test
+    void similarImageSearchEnforcesOwnerImageAndExistenceRules() throws Exception {
+        DigitalAsset image = createAsset(
+                currentUser, "Private image", "private.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+        image.setPerceptualHash("0000000000000000");
+        digitalAssetRepository.saveAndFlush(image);
+        DigitalAsset document = createAsset(
+                currentUser, "Document", "document.pdf", DigitalAsset.AssetType.DOCUMENT,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+
+        mockMvc.perform(get("/api/v1/assets/{assetId}/similar-images", image.getUuid())
+                        .header(HttpHeaders.AUTHORIZATION, tokenFor(createUser())))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/assets/{assetId}/similar-images", document.getUuid())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/v1/assets/{assetId}/similar-images", UUID.randomUUID())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void ownerCanRequestKnownOriginalComparisonWithClosestPlausibleCandidate() throws Exception {
+        String candidateId = uploadAndReturnAssetId(
+                "/api/v1/assets/images",
+                new MockMultipartFile("file", "reference.jpg", "image/jpeg", createImage("jpg")),
+                "Reference",
+                authorizationHeader);
+        String targetId = uploadAndReturnAssetId(
+                "/api/v1/assets/images",
+                new MockMultipartFile("file", "target.png", "image/png", createImage("png")),
+                "Target",
+                authorizationHeader);
+        DigitalAsset candidate = digitalAssetRepository.findByUuid(candidateId).orElseThrow();
+        DigitalAsset target = digitalAssetRepository.findByUuid(targetId).orElseThrow();
+        candidate.setUploadDate(LocalDateTime.now().minusDays(1));
+        target.setUploadDate(LocalDateTime.now());
+        candidate.setPerceptualHash("0000000000000000");
+        target.setPerceptualHash("0000000000000000");
+        digitalAssetRepository.saveAllAndFlush(java.util.List.of(candidate, target));
+
+        mockMvc.perform(post("/api/v1/assets/{assetId}/compare-known-original", targetId)
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.assetId").value(targetId))
+                .andExpect(jsonPath("$.data.candidateFound").value(true))
+                .andExpect(jsonPath("$.data.candidate.assetId").value(candidateId))
+                .andExpect(jsonPath("$.data.candidate.matchBand")
+                        .value("EXACT_VISUAL_HASH"))
+                .andExpect(jsonPath("$.data.comparisonPerformed").value(false))
+                .andExpect(jsonPath("$.data.reason").value("AI_SERVICE_DISABLED"))
+                .andExpect(jsonPath("$.data.candidate.id").doesNotExist())
+                .andExpect(jsonPath("$.data.candidate.storagePath").doesNotExist())
+                .andExpect(jsonPath("$.data.candidate.storedFilename").doesNotExist());
+    }
+
+    @Test
+    void knownOriginalComparisonReturnsControlledNoCandidateAndEnforcesTargetAccess() throws Exception {
+        DigitalAsset target = createAsset(
+                currentUser, "No original", "no-original.png", DigitalAsset.AssetType.IMAGE,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+        target.setPerceptualHash("0000000000000000");
+        digitalAssetRepository.saveAndFlush(target);
+
+        mockMvc.perform(post("/api/v1/assets/{assetId}/compare-known-original", target.getUuid())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.candidateFound").value(false))
+                .andExpect(jsonPath("$.data.comparisonPerformed").value(false))
+                .andExpect(jsonPath("$.data.reason").value("NO_KNOWN_ORIGINAL"));
+
+        mockMvc.perform(post("/api/v1/assets/{assetId}/compare-known-original", target.getUuid())
+                        .header(HttpHeaders.AUTHORIZATION, tokenFor(createUser())))
+                .andExpect(status().isNotFound());
+
+        DigitalAsset document = createAsset(
+                currentUser, "Document", "document.pdf", DigitalAsset.AssetType.DOCUMENT,
+                DigitalAsset.VerificationStatus.VERIFIED, LocalDateTime.now());
+        mockMvc.perform(post("/api/v1/assets/{assetId}/compare-known-original", document.getUuid())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/v1/assets/{assetId}/compare-known-original", UUID.randomUUID())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void ownerCanRequestAiAnalysisAndDisabledServiceIsSafelyReported() throws Exception {
+        String assetId = uploadPngAndReturnAssetId("ai-analysis.png", "AI analysis");
+
+        mockMvc.perform(post("/api/v1/assets/{assetId}/analyze-ai", assetId)
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.assetId").value(assetId))
+                .andExpect(jsonPath("$.data.aiGenerationAnalysis.performed").value(false))
+                .andExpect(jsonPath("$.data.aiGenerationAnalysis.status")
+                        .value("AI_SERVICE_DISABLED"))
+                .andExpect(jsonPath("$.data.manipulationAnalysis.performed").value(false))
+                .andExpect(jsonPath("$.data.manipulationAnalysis.status")
+                        .value("AI_SERVICE_DISABLED"))
+                .andExpect(jsonPath("$.data.analyzedAt").exists())
+                .andExpect(jsonPath("$.data.id").doesNotExist())
+                .andExpect(jsonPath("$.data.storagePath").doesNotExist())
+                .andExpect(jsonPath("$.data.storedFilename").doesNotExist())
+                .andExpect(jsonPath("$.data.rawLogit").doesNotExist());
+    }
+
+    @Test
+    void aiAnalysisRequiresAuthenticationOwnershipImageTypeAndExistingUuid() throws Exception {
+        String imageId = uploadPngAndReturnAssetId("private-ai.png", "Private AI");
+        String documentId = uploadAndReturnAssetId(
+                "/api/v1/assets/documents",
+                new MockMultipartFile("file", "ai-document.pdf", "application/pdf", createPdf()),
+                "AI document",
+                authorizationHeader);
+
+        mockMvc.perform(post("/api/v1/assets/{assetId}/analyze-ai", imageId))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/v1/assets/{assetId}/analyze-ai", imageId)
+                        .header(HttpHeaders.AUTHORIZATION, tokenFor(createUser())))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post("/api/v1/assets/{assetId}/analyze-ai", documentId)
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/v1/assets/{assetId}/analyze-ai", UUID.randomUUID())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void ownerDeletesImageAssetHistoryAndPhysicalFile() throws Exception {
+        String assetId = uploadPngAndReturnAssetId("delete-image.png", "Delete image");
+        DigitalAsset asset = digitalAssetRepository.findByUuid(assetId).orElseThrow();
+        Long databaseId = asset.getId();
+        Path storedFile = TEST_ROOT.resolve("uploads").resolve(asset.getStoragePath());
+
+        mockMvc.perform(delete("/api/v1/assets/{assetId}", assetId)
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        assertTrue(digitalAssetRepository.findByUuid(assetId).isEmpty());
+        assertTrue(verificationHistoryRepository.findByAssetId(databaseId).isEmpty());
+        assertTrue(Files.notExists(storedFile));
+    }
+
+    @Test
+    void ownerDeletesDocumentAssetAndDependentDocument() throws Exception {
+        String assetId = uploadAndReturnAssetId(
+                "/api/v1/assets/documents",
+                new MockMultipartFile("file", "delete-document.pdf", "application/pdf", createPdf()),
+                "Delete document",
+                authorizationHeader);
+        DigitalAsset asset = digitalAssetRepository.findByUuid(assetId).orElseThrow();
+        Long databaseId = asset.getId();
+        Path storedFile = TEST_ROOT.resolve("uploads").resolve(asset.getStoragePath());
+        assertTrue(documentRepository.findByAssetId(databaseId).isPresent());
+
+        mockMvc.perform(delete("/api/v1/assets/{assetId}", assetId)
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        assertTrue(digitalAssetRepository.findByUuid(assetId).isEmpty());
+        assertTrue(documentRepository.findByAssetId(databaseId).isEmpty());
+        assertTrue(verificationHistoryRepository.findByAssetId(databaseId).isEmpty());
+        assertTrue(Files.notExists(storedFile));
+    }
+
+    @Test
+    void anotherUserCannotDeleteOwnedAsset() throws Exception {
+        String assetId = uploadPngAndReturnAssetId("delete-private.png", "Delete private");
+        DigitalAsset asset = digitalAssetRepository.findByUuid(assetId).orElseThrow();
+        Path storedFile = TEST_ROOT.resolve("uploads").resolve(asset.getStoragePath());
+
+        mockMvc.perform(delete("/api/v1/assets/{assetId}", assetId)
+                        .header(HttpHeaders.AUTHORIZATION, tokenFor(createUser())))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false));
+
+        assertTrue(digitalAssetRepository.findByUuid(assetId).isPresent());
+        assertTrue(Files.exists(storedFile));
+    }
+
+    @Test
+    void deletingNonexistentAssetReturnsNotFound() throws Exception {
+        mockMvc.perform(delete("/api/v1/assets/{assetId}", UUID.randomUUID())
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void deletesDatabaseAssetWhenPhysicalFileIsAlreadyMissing() throws Exception {
+        String assetId = uploadPngAndReturnAssetId("already-missing.png", "Already missing");
+        DigitalAsset asset = digitalAssetRepository.findByUuid(assetId).orElseThrow();
+        Files.delete(TEST_ROOT.resolve("uploads").resolve(asset.getStoragePath()));
+
+        mockMvc.perform(delete("/api/v1/assets/{assetId}", assetId)
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        assertTrue(digitalAssetRepository.findByUuid(assetId).isEmpty());
+    }
+
+    @Test
+    void deletingOwnedAssetDoesNotDeleteAnotherUsersAssetOrFile() throws Exception {
+        String ownedAssetId = uploadPngAndReturnAssetId("owned-delete.png", "Owned delete");
+        String otherUserHeader = tokenFor(createUser());
+        String otherAssetId = uploadAndReturnAssetId(
+                "/api/v1/assets/documents",
+                new MockMultipartFile("file", "other-kept.pdf", "application/pdf", createPdf()),
+                "Other kept",
+                otherUserHeader);
+        DigitalAsset otherAsset = digitalAssetRepository.findByUuid(otherAssetId).orElseThrow();
+        Path otherFile = TEST_ROOT.resolve("uploads").resolve(otherAsset.getStoragePath());
+
+        mockMvc.perform(delete("/api/v1/assets/{assetId}", ownedAssetId)
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isNoContent());
+
+        assertTrue(digitalAssetRepository.findByUuid(ownedAssetId).isEmpty());
+        assertTrue(digitalAssetRepository.findByUuid(otherAssetId).isPresent());
+        assertTrue(Files.exists(otherFile));
+    }
+
+    @Test
+    void deleteRequiresJwt() throws Exception {
+        mockMvc.perform(delete("/api/v1/assets/{assetId}", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    private DigitalAsset createAsset(
+            User owner,
+            String title,
+            String originalFilename,
+            DigitalAsset.AssetType assetType,
+            DigitalAsset.VerificationStatus verificationStatus,
+            LocalDateTime uploadDate) {
+        String uuid = UUID.randomUUID().toString();
+        String extension = assetType == DigitalAsset.AssetType.IMAGE ? "png" : "pdf";
+        String directory = assetType == DigitalAsset.AssetType.IMAGE ? "images" : "documents";
+        String storedFilename = uuid + "." + extension;
+        String hashSeed = UUID.randomUUID().toString().replace("-", "");
+
+        DigitalAsset asset = new DigitalAsset();
+        asset.setUuid(uuid);
+        asset.setOwner(owner);
+        asset.setCurrentOwner(owner);
+        asset.setTitle(title);
+        asset.setAssetType(assetType);
+        asset.setOriginalFilename(originalFilename);
+        asset.setStoredFilename(storedFilename);
+        asset.setMimeType(assetType == DigitalAsset.AssetType.IMAGE
+                ? "image/png"
+                : "application/pdf");
+        asset.setFileSize(128L);
+        asset.setStoragePath(directory + "/" + storedFilename);
+        asset.setSha256Hash(hashSeed + hashSeed);
+        asset.setUploadDate(uploadDate);
+        asset.setVerificationStatus(verificationStatus);
+        return digitalAssetRepository.saveAndFlush(asset);
+    }
+
+    private VerificationHistory createHistory(
+            DigitalAsset asset,
+            LocalDateTime verifiedAt,
+            VerificationHistory.Result result,
+            String notes) {
+        VerificationHistory history = new VerificationHistory();
+        history.setAsset(asset);
+        history.setVerifiedBy(asset.getCurrentOwner());
+        history.setVerificationMethod(VerificationHistory.VerificationMethod.SHA256_INTEGRITY);
+        history.setResult(result);
+        history.setVerifiedAt(verifiedAt);
+        history.setNotes(notes);
+        return verificationHistoryRepository.saveAndFlush(history);
     }
 
     private String uploadPngAndReturnAssetId(String filename, String title) throws Exception {

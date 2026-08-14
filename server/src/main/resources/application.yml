@@ -35,3 +35,16 @@ authvault:
     image-max-size: ${AUTHVAULT_UPLOAD_IMAGE_MAX_SIZE:25MB}
     document-max-size: ${AUTHVAULT_UPLOAD_DOCUMENT_MAX_SIZE:50MB}
     root-directory: ${AUTHVAULT_UPLOAD_ROOT:uploads}
+  verification:
+    phash:
+      enabled: ${AUTHVAULT_PHASH_ENABLED:true}
+      # Heuristic retrieval bands; calibrate against representative AuthVault images.
+      review-threshold: ${AUTHVAULT_PHASH_REVIEW_THRESHOLD:6}
+      possible-match-threshold: ${AUTHVAULT_PHASH_POSSIBLE_MATCH_THRESHOLD:14}
+      max-candidates: ${AUTHVAULT_PHASH_MAX_CANDIDATES:5}
+  ai-service:
+    enabled: ${AUTHVAULT_AI_SERVICE_ENABLED:false}
+    base-url: ${AUTHVAULT_AI_SERVICE_URL:http://localhost:8001}
+    connect-timeout: ${AUTHVAULT_AI_CONNECT_TIMEOUT:2s}
+    read-timeout: ${AUTHVAULT_AI_READ_TIMEOUT:10s}
+    analysis-read-timeout: ${AUTHVAULT_AI_ANALYSIS_READ_TIMEOUT:60s}

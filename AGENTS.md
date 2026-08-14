@@ -10,6 +10,12 @@
 - Never load an entire uploaded file into memory solely to hash it; hash while streaming.
 - Keep controllers thin and business logic in services.
 - React pages must call service modules, never Axios directly.
+- Spring Boot remains the main application and public API; ML/computer-vision inference belongs in `/ai-service` using Python, FastAPI, and PyTorch where model inference is required.
+- Spring calls the AI service through internal HTTP with controlled image bytes or analysis inputs. The AI service must not access the application database, validate public JWTs, or expose public user endpoints.
+- The browser never calls the AI service directly; Spring owns authentication and authorization.
+- Treat exact integrity, perceptual similarity, manipulation detection, AI-origin detection, and provenance as separate evidence. A model probability is not proof that an image is fake.
+- Keep detector implementations replaceable behind interfaces. Do not commit large model weights or download weights during normal application requests.
+- Preserve working authentication, upload, SHA-256 integrity, asset-management, and verification behavior while adding forensic capabilities.
 - For the upload-integrity MVP, do not implement pHash, OCR, semantic hashing, AI authenticity detection, blockchain, marketplace, or vault functionality.
 - Make minimal, focused changes and do not rewrite unrelated working code.
 - After every implementation task, run the relevant tests and builds.

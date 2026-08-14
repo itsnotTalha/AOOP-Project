@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 
 @RestController
-@RequestMapping("/api/dashboard")
+@RequestMapping({"/api/dashboard", "/api/v1/dashboard"})
 public class DashboardController {
 
     private final DashboardService dashboardService;
