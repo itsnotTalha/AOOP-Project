@@ -4,6 +4,7 @@ import com.authvault.entity.DigitalAsset;
 import com.authvault.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -30,6 +31,11 @@ public interface DigitalAssetRepository extends JpaRepository<DigitalAsset, Long
 
     boolean existsBySha256Hash(String sha256Hash);
 
+    boolean existsBySha256HashAndUuidNot(String sha256Hash, String uuid);
+
+    List<DigitalAsset> findByVerificationStatusOrderByUploadDateAsc(
+            DigitalAsset.VerificationStatus verificationStatus);
+
     @Query("""
             SELECT asset
             FROM DigitalAsset asset
@@ -42,4 +48,14 @@ public interface DigitalAssetRepository extends JpaRepository<DigitalAsset, Long
             @Param("owner") User owner,
             @Param("targetUuid") String targetUuid,
             @Param("targetUploadDate") LocalDateTime targetUploadDate);
+
+    @Query("""
+            SELECT asset
+            FROM DigitalAsset asset
+            WHERE asset.assetType = com.authvault.entity.DigitalAsset.AssetType.IMAGE
+              AND asset.verificationStatus = com.authvault.entity.DigitalAsset.VerificationStatus.VERIFIED
+              AND asset.perceptualHash IS NOT NULL
+            ORDER BY asset.uploadDate DESC, asset.uuid ASC
+            """)
+    List<DigitalAsset> findVerifiedImageRegistryCandidates(Pageable pageable);
 }

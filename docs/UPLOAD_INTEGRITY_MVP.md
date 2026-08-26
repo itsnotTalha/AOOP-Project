@@ -46,8 +46,8 @@ The upload operation must:
 8. Reject a file when its SHA-256 already exists. Return HTTP `409 Conflict` with error code `DUPLICATE_FILE` and do not store another copy.
 9. Store the accepted file under a server-generated UUID filename.
 10. Persist the asset with the correct `IMAGE` or `DOCUMENT` `AssetType`.
-11. Set `verificationStatus` to `VERIFIED` after the file and asset are successfully persisted.
-12. Create the initial `VerificationHistory` record with method `SHA256_UPLOAD`.
+11. Set `verificationStatus` to `PENDING` after the file and asset are successfully persisted. Upload validation and SHA-256 capture are integrity evidence, not a final authenticity decision.
+12. Create the initial `VerificationHistory` record with method `SHA256_UPLOAD` and result `VERIFIED`; this result describes the upload-integrity event only.
 13. Clean up temporary files on both success and failure.
 
 ## Integrity Verification API
@@ -61,9 +61,8 @@ The upload operation must:
 - The asset must belong to the authenticated current owner.
 - Read the stored file and recalculate its SHA-256 by streaming its bytes.
 - Compare the recalculated hash with the original stored hash using exact equality.
-- If equal, set the asset verification status to `VERIFIED`.
-- If the stored file is different, missing, or corrupt, set the asset verification status to `REJECTED`.
-- Save a `VerificationHistory` record with method `SHA256_INTEGRITY` and the corresponding result.
+- Do not change the asset's human verification status based on this hash comparison.
+- Save a `VerificationHistory` record with method `SHA256_INTEGRITY` and result `VERIFIED` for a match or `REJECTED` for a mismatch/unreadable file. These results describe integrity events, not authenticity decisions.
 - Return:
   - `originalHash`
   - `currentHash` when it is available
@@ -89,10 +88,12 @@ Downloads must enforce current-owner access, stream the stored file, use a safe 
 
 Duplicate files are not stored in this MVP. Any existing SHA-256 causes HTTP `409 Conflict` with error code `DUPLICATE_FILE`.
 
-## Meaning of VERIFIED
+## Meaning of Verification Results and Asset Status
 
-`VERIFIED` means that the file passed the required upload validation and/or that its current stored bytes exactly match the SHA-256 captured during upload. It does **not** prove authorship, copyright ownership, or the truthfulness of document content.
+`VerificationHistory.result=VERIFIED` means that upload validation succeeded or that the stored bytes exactly match the SHA-256 captured during upload. It does **not** prove authenticity, authorship, copyright ownership, or truthful content.
+
+`DigitalAsset.verificationStatus=VERIFIED` is reserved for a final human-authenticator approval. Evidence generation moves an asset to `PENDING_REVIEW`; a human review then moves it to `VERIFIED` or `REJECTED`.
 
 ## Non-Goals
 
-The MVP does not include pHash or visual similarity, OCR, semantic hashes, content-authenticity detection, AI authenticity detection, authorship proof, digital signatures, blockchain, marketplace, vault functionality, or malware scanning.
+The upload-integrity operation itself does not perform pHash, visual similarity, deterministic image comparison, Fabric lookup, OCR, semantic hashes, AI authenticity detection, authorship proof, digital signatures, marketplace, vault functionality, or malware scanning. Separate verification-evidence services may add the supported deterministic evidence without changing SHA-256 integrity semantics.

@@ -4,7 +4,6 @@ import com.authvault.dto.asset.AssetResponse;
 import com.authvault.dto.asset.AssetDetailResponse;
 import com.authvault.dto.asset.AssetUploadRequest;
 import com.authvault.dto.asset.AssetVerificationResponse;
-import com.authvault.dto.asset.AssetAiAnalysisResponse;
 import com.authvault.dto.asset.VerificationHistoryResponse;
 import com.authvault.dto.asset.SimilarImagesResponse;
 import com.authvault.dto.asset.KnownOriginalComparisonResponse;
@@ -13,7 +12,6 @@ import com.authvault.service.AssetIntegrityService;
 import com.authvault.service.AssetManagementService;
 import com.authvault.service.AssetQueryService;
 import com.authvault.service.AssetUploadService;
-import com.authvault.service.AiAssetAnalysisService;
 import com.authvault.service.KnownOriginalCandidateService;
 import com.authvault.service.KnownOriginalComparisonService;
 import jakarta.validation.Valid;
@@ -47,7 +45,6 @@ public class AssetUploadController {
     private final AssetManagementService assetManagementService;
     private final KnownOriginalCandidateService knownOriginalCandidateService;
     private final KnownOriginalComparisonService knownOriginalComparisonService;
-    private final AiAssetAnalysisService aiAssetAnalysisService;
 
     public AssetUploadController(
             AssetUploadService assetUploadService,
@@ -55,15 +52,13 @@ public class AssetUploadController {
             AssetQueryService assetQueryService,
             AssetManagementService assetManagementService,
             KnownOriginalCandidateService knownOriginalCandidateService,
-            KnownOriginalComparisonService knownOriginalComparisonService,
-            AiAssetAnalysisService aiAssetAnalysisService) {
+            KnownOriginalComparisonService knownOriginalComparisonService) {
         this.assetUploadService = assetUploadService;
         this.assetIntegrityService = assetIntegrityService;
         this.assetQueryService = assetQueryService;
         this.assetManagementService = assetManagementService;
         this.knownOriginalCandidateService = knownOriginalCandidateService;
         this.knownOriginalComparisonService = knownOriginalComparisonService;
-        this.aiAssetAnalysisService = aiAssetAnalysisService;
     }
 
     @PostMapping(value = "/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -129,14 +124,6 @@ public class AssetUploadController {
                 knownOriginalComparisonService.compareWithKnownOriginal(assetId);
         return ResponseEntity.ok(successResponse(
                 "Known-original comparison completed", comparison));
-    }
-
-    @PostMapping("/{assetId}/analyze-ai")
-    public ResponseEntity<ApiResponse<AssetAiAnalysisResponse>> analyzeAi(
-            @PathVariable String assetId) {
-        AssetAiAnalysisResponse analysis = aiAssetAnalysisService.analyzeOwnedImage(assetId);
-        return ResponseEntity.ok(successResponse(
-                "AI generation analysis completed", analysis));
     }
 
     @DeleteMapping("/{assetId}")

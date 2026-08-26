@@ -30,6 +30,9 @@ public class PerceptualHashProperties {
     @Positive
     private int maxCandidates = 5;
 
+    @Positive
+    private int registryScanLimit = 100;
+
     @AssertTrue(message = "review-threshold must be less than or equal to possible-match-threshold")
     public boolean isThresholdOrderValid() {
         return reviewThreshold <= possibleMatchThreshold;

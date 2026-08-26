@@ -1,8 +1,8 @@
 package com.authvault.service.impl;
 
-import com.authvault.client.ai.AiClientResult;
-import com.authvault.client.ai.AiForensicsClient;
-import com.authvault.dto.ai.AiImageComparisonResponse;
+import com.authvault.client.comparison.ComparisonClientResult;
+import com.authvault.client.comparison.ImageComparisonClient;
+import com.authvault.dto.comparison.ImageComparisonResponse;
 import com.authvault.dto.asset.KnownOriginalComparisonResponse;
 import com.authvault.dto.asset.PerceptualMatchBand;
 import com.authvault.dto.asset.SimilarImageMatchResponse;
@@ -48,7 +48,7 @@ class KnownOriginalComparisonServiceImplTest {
     private DigitalAssetRepository repository;
     private KnownOriginalCandidateService candidateService;
     private AssetStorageService storageService;
-    private AiForensicsClient aiClient;
+    private ImageComparisonClient imageComparisonClient;
     private KnownOriginalComparisonServiceImpl service;
     private User currentUser;
 
@@ -57,9 +57,9 @@ class KnownOriginalComparisonServiceImplTest {
         repository = mock(DigitalAssetRepository.class);
         candidateService = mock(KnownOriginalCandidateService.class);
         storageService = mock(AssetStorageService.class);
-        aiClient = mock(AiForensicsClient.class);
+        imageComparisonClient = mock(ImageComparisonClient.class);
         service = new KnownOriginalComparisonServiceImpl(
-                repository, candidateService, storageService, aiClient);
+                repository, candidateService, storageService, imageComparisonClient);
 
         currentUser = user();
         CustomUserDetails userDetails = new CustomUserDetails(currentUser);
@@ -98,12 +98,12 @@ class KnownOriginalComparisonServiceImplTest {
                 .thenReturn(new ByteArrayInputStream(referenceBytes));
         when(storageService.loadStoredAsset(target.getStoragePath()))
                 .thenReturn(new ByteArrayInputStream(targetBytes));
-        when(aiClient.compareImages(any(), any(), any(), any())).thenAnswer(invocation -> {
+        when(imageComparisonClient.compareImages(any(), any(), any(), any())).thenAnswer(invocation -> {
             sentReference.set(((Resource) invocation.getArgument(0)).getInputStream().readAllBytes());
             sentTarget.set(((Resource) invocation.getArgument(2)).getInputStream().readAllBytes());
             assertEquals(MediaType.IMAGE_JPEG, invocation.getArgument(1));
             assertEquals(MediaType.IMAGE_PNG, invocation.getArgument(3));
-            return AiClientResult.success(internalComparison());
+            return ComparisonClientResult.success(internalComparison());
         });
 
         KnownOriginalComparisonResponse response =
@@ -123,7 +123,7 @@ class KnownOriginalComparisonServiceImplTest {
     }
 
     @Test
-    void noPreviousOrOnlyNoMatchReturnsNoKnownOriginalWithoutCallingAiService() {
+    void noPreviousOrOnlyNoMatchReturnsNoKnownOriginalWithoutCallingComparisonService() {
         DigitalAsset target = image("target", "images/target.png", "image/png");
         when(repository.findByUuidAndCurrentOwner(target.getUuid(), currentUser))
                 .thenReturn(Optional.of(target));
@@ -141,7 +141,7 @@ class KnownOriginalComparisonServiceImplTest {
         assertEquals("NO_KNOWN_ORIGINAL", response.getReason());
         assertNull(response.getCandidate());
         assertNull(response.getComparison());
-        verify(aiClient, never()).compareImages(any(), any(), any(), any());
+        verify(imageComparisonClient, never()).compareImages(any(), any(), any(), any());
         verify(storageService, never()).loadStoredAsset(any());
     }
 
@@ -170,23 +170,23 @@ class KnownOriginalComparisonServiceImplTest {
         DigitalAsset target = image("target", "images/target.png", "image/png");
         DigitalAsset candidate = image("candidate", "images/candidate.png", "image/png");
         configureCandidate(target, candidate, PerceptualMatchBand.EXACT_VISUAL_HASH);
-        when(aiClient.compareImages(any(), any(), any(), any()))
-                .thenReturn(AiClientResult.success(internalComparison()));
+        when(imageComparisonClient.compareImages(any(), any(), any(), any()))
+                .thenReturn(ComparisonClientResult.success(internalComparison()));
 
         KnownOriginalComparisonResponse response =
                 service.compareWithKnownOriginal(target.getUuid());
 
         assertTrue(response.isComparisonPerformed());
-        verify(aiClient).compareImages(any(), any(), any(), any());
+        verify(imageComparisonClient).compareImages(any(), any(), any(), any());
     }
 
     @Test
-    void disabledOrUnavailableAiServiceProducesControlledCondition() {
+    void disabledOrUnavailableComparisonServiceProducesControlledCondition() {
         DigitalAsset target = image("target", "images/target.png", "image/png");
         DigitalAsset candidate = image("candidate", "images/candidate.png", "image/png");
         configureCandidate(target, candidate, PerceptualMatchBand.POSSIBLE_MATCH);
-        when(aiClient.compareImages(any(), any(), any(), any()))
-                .thenReturn(AiClientResult.unavailable());
+        when(imageComparisonClient.compareImages(any(), any(), any(), any()))
+                .thenReturn(ComparisonClientResult.unavailable());
 
         KnownOriginalComparisonResponse unavailable =
                 service.compareWithKnownOriginal(target.getUuid());
@@ -196,8 +196,8 @@ class KnownOriginalComparisonServiceImplTest {
         assertEquals("AI_SERVICE_UNAVAILABLE", unavailable.getReason());
 
         configureCandidate(target, candidate, PerceptualMatchBand.POSSIBLE_MATCH);
-        when(aiClient.compareImages(any(), any(), any(), any()))
-                .thenReturn(AiClientResult.disabled());
+        when(imageComparisonClient.compareImages(any(), any(), any(), any()))
+                .thenReturn(ComparisonClientResult.disabled());
         KnownOriginalComparisonResponse disabled =
                 service.compareWithKnownOriginal(target.getUuid());
         assertEquals("AI_SERVICE_DISABLED", disabled.getReason());
@@ -287,14 +287,14 @@ class KnownOriginalComparisonServiceImplTest {
         return user;
     }
 
-    private AiImageComparisonResponse internalComparison() {
-        return new AiImageComparisonResponse(
+    private ImageComparisonResponse internalComparison() {
+        return new ImageComparisonResponse(
                 "1",
-                new AiImageComparisonResponse.Alignment(
+                new ImageComparisonResponse.Alignment(
                         "ALIGNED", "ORB_HOMOGRAPHY", 80, 75, 42, 31, 0.738),
-                new AiImageComparisonResponse.Difference(
+                new ImageComparisonResponse.Difference(
                         true, 0.083, 12.6, null),
-                new AiImageComparisonResponse.ChangeMask(
+                new ImageComparisonResponse.ChangeMask(
                         true, "png", "bWFzaw=="),
                 "COMPLETED");
     }

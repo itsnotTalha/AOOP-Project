@@ -262,7 +262,7 @@ public class AssetUploadServiceImpl implements AssetUploadService {
         asset.setSha256Hash(sha256Hash);
         asset.setPerceptualHash(perceptualHash);
         asset.setUploadDate(now);
-        asset.setVerificationStatus(DigitalAsset.VerificationStatus.VERIFIED);
+        asset.setVerificationStatus(DigitalAsset.VerificationStatus.PENDING);
 
         if (assetType == DigitalAsset.AssetType.DOCUMENT) {
             Document document = new Document();

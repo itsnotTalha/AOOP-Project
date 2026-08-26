@@ -190,7 +190,7 @@ export default function Assets() {
 }
 
 const VALID_TYPES = new Set(['IMAGE', 'DOCUMENT'])
-const VALID_STATUSES = new Set(['PENDING', 'VERIFIED', 'REJECTED'])
+const VALID_STATUSES = new Set(['PENDING', 'PENDING_REVIEW', 'VERIFIED', 'REJECTED'])
 
 function readFilters(searchParams) {
   const search = (searchParams.get('search') || '').trim()
@@ -225,7 +225,7 @@ function UploadSuccessCard({ asset, copied, onCopy }) {
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20"><CheckCircle2 size={22} /></span>
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">VERIFIED / Approved</p>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">SHA-256 captured</p>
             <h2 className="mt-1 text-lg font-bold text-emerald-950">Upload completed</h2>
           </div>
         </div>

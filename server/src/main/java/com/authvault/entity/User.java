@@ -131,6 +131,7 @@ public class User {
 
     public enum Role {
         ADMIN,
+        AUTHENTICATOR,
         USER
     }
 

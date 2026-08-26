@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -100,18 +101,112 @@ class AssetUploadControllerIntegrationTest {
     }
 
     private User createUser() {
+        return createUser(User.Role.USER);
+    }
+
+    private User createUser(User.Role role) {
         User user = new User();
         user.setUuid(UUID.randomUUID().toString());
         user.setFullName("Upload Owner");
         user.setUsername("owner-" + UUID.randomUUID());
         user.setEmail(user.getUsername() + "@example.com");
         user.setPasswordHash("test-password-hash");
-        user.setRole(User.Role.USER);
+        user.setRole(role);
         user.setStatus(User.Status.ACTIVE);
         user.setVerified(true);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         return userRepository.saveAndFlush(user);
+    }
+
+    @Test
+    void verificationEvidenceRequiresOwnerAndAuthenticatorFinalizesOnlyOnce() throws Exception {
+        String assetId = uploadPngAndReturnAssetId("review.png", "Review image");
+
+        mockMvc.perform(post("/api/v1/assets/{assetId}/verification/evidence", assetId)
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.assetId").value(assetId))
+                .andExpect(jsonPath("$.data.sha256", matchesPattern("[0-9a-f]{64}")))
+                .andExpect(jsonPath("$.data.perceptualHashStatus").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.comparisonPerformed").value(false))
+                .andExpect(jsonPath("$.data.fabricLookupPerformed").value(false))
+                .andExpect(jsonPath("$.data.evidenceHash", matchesPattern("[0-9a-f]{64}")))
+                .andExpect(jsonPath("$.data.verificationStatus").value("PENDING_REVIEW"));
+
+        mockMvc.perform(get("/api/v1/assets/{assetId}/verification/evidence", assetId)
+                        .header(HttpHeaders.AUTHORIZATION, tokenFor(createUser())))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/assets/{assetId}/verification/evidence/history", assetId)
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].assetId").value(assetId));
+
+        mockMvc.perform(get("/api/v1/authenticator/reviews/pending")
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isForbidden());
+
+        User authenticator = createUser(User.Role.AUTHENTICATOR);
+        String reviewerHeader = tokenFor(authenticator);
+        mockMvc.perform(get("/api/v1/authenticator/reviews/pending")
+                        .header(HttpHeaders.AUTHORIZATION, reviewerHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].assetId").value(assetId));
+
+        mockMvc.perform(get("/api/v1/authenticator/reviews/{assetId}", assetId)
+                        .header(HttpHeaders.AUTHORIZATION, reviewerHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.evidence.assetId").value(assetId))
+                .andExpect(jsonPath("$.data.review").doesNotExist());
+
+        mockMvc.perform(post("/api/v1/authenticator/reviews/{assetId}/approve", assetId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Evidence reviewed\"}")
+                        .header(HttpHeaders.AUTHORIZATION, reviewerHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.assetId").value(assetId))
+                .andExpect(jsonPath("$.data.decision").value("VERIFIED"))
+                .andExpect(jsonPath("$.data.reviewerUserId").value(authenticator.getUuid()))
+                .andExpect(jsonPath("$.data.reviewedAt").exists());
+
+        mockMvc.perform(post("/api/v1/authenticator/reviews/{assetId}/reject", assetId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Second decision\"}")
+                        .header(HttpHeaders.AUTHORIZATION, reviewerHeader))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void rejectionRequiresReasonAndRegistrationCannotAssignAuthenticatorRole() throws Exception {
+        String assetId = uploadPngAndReturnAssetId("reject-review.png", "Reject review");
+        mockMvc.perform(post("/api/v1/assets/{assetId}/verification/evidence", assetId)
+                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
+                .andExpect(status().isCreated());
+        String reviewerHeader = tokenFor(createUser(User.Role.AUTHENTICATOR));
+
+        mockMvc.perform(post("/api/v1/authenticator/reviews/{assetId}/reject", assetId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"   \"}")
+                        .header(HttpHeaders.AUTHORIZATION, reviewerHeader))
+                .andExpect(status().isBadRequest());
+
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "fullName":"Public User",
+                                  "username":"public-%s",
+                                  "email":"public-%s@example.com",
+                                  "password":"password123",
+                                  "confirmPassword":"password123",
+                                  "role":"AUTHENTICATOR"
+                                }
+                                """.formatted(suffix, suffix)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.user.role").value("USER"));
     }
 
     @Test
@@ -134,7 +229,7 @@ class AssetUploadControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.mimeType").value("image/png"))
                 .andExpect(jsonPath("$.data.fileSize").value(content.length))
                 .andExpect(jsonPath("$.data.sha256Hash", matchesPattern("[0-9a-f]{64}")))
-                .andExpect(jsonPath("$.data.verificationStatus").value("VERIFIED"))
+                .andExpect(jsonPath("$.data.verificationStatus").value("PENDING"))
                 .andExpect(jsonPath("$.data.uploadDate").exists())
                 .andExpect(jsonPath("$.data.id").doesNotExist())
                 .andExpect(jsonPath("$.data.storagePath").doesNotExist())
@@ -158,7 +253,7 @@ class AssetUploadControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.assetType").value("IMAGE"))
                 .andExpect(jsonPath("$.data.originalFilename").value("photo.jpeg"))
                 .andExpect(jsonPath("$.data.mimeType").value("image/jpeg"))
-                .andExpect(jsonPath("$.data.verificationStatus").value("VERIFIED"));
+                .andExpect(jsonPath("$.data.verificationStatus").value("PENDING"));
 
         DigitalAsset stored = digitalAssetRepository
                 .findByCurrentOwnerOrderByUploadDateDesc(currentUser).getFirst();
@@ -178,7 +273,7 @@ class AssetUploadControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.assetType").value("DOCUMENT"))
                 .andExpect(jsonPath("$.data.originalFilename").value("report.pdf"))
                 .andExpect(jsonPath("$.data.mimeType").value("application/pdf"))
-                .andExpect(jsonPath("$.data.verificationStatus").value("VERIFIED"));
+                .andExpect(jsonPath("$.data.verificationStatus").value("PENDING"));
 
         DigitalAsset stored = digitalAssetRepository
                 .findByCurrentOwnerOrderByUploadDateDesc(currentUser).getFirst();
@@ -271,7 +366,7 @@ class AssetUploadControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.originalHash").value(originalHash))
                 .andExpect(jsonPath("$.data.currentHash").value(originalHash))
                 .andExpect(jsonPath("$.data.hashMatches").value(true))
-                .andExpect(jsonPath("$.data.verificationStatus").value("VERIFIED"))
+                .andExpect(jsonPath("$.data.verificationStatus").value("PENDING"))
                 .andExpect(jsonPath("$.data.verifiedAt").exists())
                 .andExpect(jsonPath("$.data.id").doesNotExist());
 
@@ -293,9 +388,9 @@ class AssetUploadControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.assetId").value(assetId))
                 .andExpect(jsonPath("$.data.currentHash", matchesPattern("[0-9a-f]{64}")))
                 .andExpect(jsonPath("$.data.hashMatches").value(false))
-                .andExpect(jsonPath("$.data.verificationStatus").value("REJECTED"));
+                .andExpect(jsonPath("$.data.verificationStatus").value("PENDING"));
 
-        assertEquals(DigitalAsset.VerificationStatus.REJECTED, asset.getVerificationStatus());
+        assertEquals(DigitalAsset.VerificationStatus.PENDING, asset.getVerificationStatus());
         assertIntegrityHistory(asset, VerificationHistory.Result.REJECTED,
                 "Stored file hash does not match the upload hash");
     }
@@ -330,7 +425,7 @@ class AssetUploadControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.currentHash").doesNotExist())
                 .andExpect(jsonPath("$.data.hashMatches").value(false))
-                .andExpect(jsonPath("$.data.verificationStatus").value("REJECTED"));
+                .andExpect(jsonPath("$.data.verificationStatus").value("PENDING"));
 
         assertIntegrityHistory(asset, VerificationHistory.Result.REJECTED,
                 "Stored file could not be read");
@@ -531,7 +626,7 @@ class AssetUploadControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.mimeType").value("image/png"))
                 .andExpect(jsonPath("$.data.fileSize").isNumber())
                 .andExpect(jsonPath("$.data.sha256Hash", matchesPattern("[0-9a-f]{64}")))
-                .andExpect(jsonPath("$.data.verificationStatus").value("VERIFIED"))
+                .andExpect(jsonPath("$.data.verificationStatus").value("PENDING"))
                 .andExpect(jsonPath("$.data.uploadDate").exists())
                 .andExpect(jsonPath("$.data.lastVerifiedAt").exists())
                 .andExpect(jsonPath("$.data.verificationHistory.length()").value(2))
@@ -821,53 +916,6 @@ class AssetUploadControllerIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         mockMvc.perform(post("/api/v1/assets/{assetId}/compare-known-original", UUID.randomUUID())
-                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void ownerCanRequestAiAnalysisAndDisabledServiceIsSafelyReported() throws Exception {
-        String assetId = uploadPngAndReturnAssetId("ai-analysis.png", "AI analysis");
-
-        mockMvc.perform(post("/api/v1/assets/{assetId}/analyze-ai", assetId)
-                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.assetId").value(assetId))
-                .andExpect(jsonPath("$.data.aiGenerationAnalysis.performed").value(false))
-                .andExpect(jsonPath("$.data.aiGenerationAnalysis.status")
-                        .value("AI_SERVICE_DISABLED"))
-                .andExpect(jsonPath("$.data.manipulationAnalysis.performed").value(false))
-                .andExpect(jsonPath("$.data.manipulationAnalysis.status")
-                        .value("AI_SERVICE_DISABLED"))
-                .andExpect(jsonPath("$.data.analyzedAt").exists())
-                .andExpect(jsonPath("$.data.id").doesNotExist())
-                .andExpect(jsonPath("$.data.storagePath").doesNotExist())
-                .andExpect(jsonPath("$.data.storedFilename").doesNotExist())
-                .andExpect(jsonPath("$.data.rawLogit").doesNotExist());
-    }
-
-    @Test
-    void aiAnalysisRequiresAuthenticationOwnershipImageTypeAndExistingUuid() throws Exception {
-        String imageId = uploadPngAndReturnAssetId("private-ai.png", "Private AI");
-        String documentId = uploadAndReturnAssetId(
-                "/api/v1/assets/documents",
-                new MockMultipartFile("file", "ai-document.pdf", "application/pdf", createPdf()),
-                "AI document",
-                authorizationHeader);
-
-        mockMvc.perform(post("/api/v1/assets/{assetId}/analyze-ai", imageId))
-                .andExpect(status().isUnauthorized());
-
-        mockMvc.perform(post("/api/v1/assets/{assetId}/analyze-ai", imageId)
-                        .header(HttpHeaders.AUTHORIZATION, tokenFor(createUser())))
-                .andExpect(status().isNotFound());
-
-        mockMvc.perform(post("/api/v1/assets/{assetId}/analyze-ai", documentId)
-                        .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
-                .andExpect(status().isBadRequest());
-
-        mockMvc.perform(post("/api/v1/assets/{assetId}/analyze-ai", UUID.randomUUID())
                         .header(HttpHeaders.AUTHORIZATION, authorizationHeader))
                 .andExpect(status().isNotFound());
     }

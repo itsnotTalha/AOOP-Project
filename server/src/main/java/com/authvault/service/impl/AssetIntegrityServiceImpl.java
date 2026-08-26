@@ -59,14 +59,10 @@ public class AssetIntegrityServiceImpl implements AssetIntegrityService {
         }
 
         LocalDateTime verifiedAt = LocalDateTime.now();
-        DigitalAsset.VerificationStatus status = hashMatches
-                ? DigitalAsset.VerificationStatus.VERIFIED
-                : DigitalAsset.VerificationStatus.REJECTED;
         VerificationHistory.Result historyResult = hashMatches
                 ? VerificationHistory.Result.VERIFIED
                 : VerificationHistory.Result.REJECTED;
 
-        asset.setVerificationStatus(status);
         VerificationHistory history = new VerificationHistory();
         history.setAsset(asset);
         history.setVerifiedBy(currentUser);
@@ -82,7 +78,7 @@ public class AssetIntegrityServiceImpl implements AssetIntegrityService {
                 .originalHash(asset.getSha256Hash())
                 .currentHash(currentHash)
                 .hashMatches(hashMatches)
-                .verificationStatus(status.name())
+                .verificationStatus(asset.getVerificationStatus().name())
                 .verifiedAt(verifiedAt)
                 .build();
     }

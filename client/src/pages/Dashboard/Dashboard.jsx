@@ -54,7 +54,7 @@ export default function Dashboard() {
 
   const derived = useMemo(() => {
     const rejected = assets.filter((asset) => asset.verificationStatus === 'REJECTED').length
-    const pendingAssets = assets.filter((asset) => asset.verificationStatus === 'PENDING')
+    const pendingAssets = assets.filter((asset) => ['PENDING', 'PENDING_REVIEW'].includes(asset.verificationStatus))
     return {
       needsAttention: rejected + pendingAssets.length,
       pendingAssets,
@@ -69,7 +69,7 @@ export default function Dashboard() {
     setActionMessage(null)
     try {
       const result = await assetService.verifyIntegrity(asset.assetId)
-      const approved = result.hashMatches && result.verificationStatus === 'VERIFIED'
+      const approved = result.hashMatches
       setActionMessage({
         tone: approved ? 'success' : 'danger',
         text: approved
@@ -180,14 +180,14 @@ export default function Dashboard() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.15em] text-teal-700">Coverage</p>
-                <h2 className="mt-2 text-xl font-bold">Integrity status</h2>
+                <h2 className="mt-2 text-xl font-bold">Human verification status</h2>
               </div>
               <span className="text-3xl font-bold tracking-tight text-slate-950">{isLoading ? '—' : `${verificationRate}%`}</span>
             </div>
             <div className="mt-6 h-2.5 overflow-hidden rounded-full bg-slate-100">
               <div className="h-full rounded-full bg-teal-500 transition-all duration-700" style={{ width: `${verificationRate}%` }} />
             </div>
-            <p className="mt-4 text-sm leading-6 text-slate-500">A verified status means the stored bytes match the upload fingerprint. It does not prove authorship, ownership, or whether content is truthful.</p>
+            <p className="mt-4 text-sm leading-6 text-slate-500">A verified status records an authenticator's approval of the captured evidence. SHA-256 matching remains separate integrity evidence.</p>
           </article>
 
           <article className="rounded-2xl border border-slate-200/80 bg-[#e8f7f3] p-6">
@@ -238,7 +238,8 @@ function StatusBadge({ status }) {
     : status === 'REJECTED'
       ? 'bg-rose-50 text-rose-700'
       : 'bg-amber-50 text-amber-700'
-  return <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide ${classes}`}>{status || 'PENDING'}</span>
+  const label = status === 'PENDING_REVIEW' ? 'PENDING REVIEW' : status || 'PENDING'
+  return <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide ${classes}`}>{label}</span>
 }
 
 function ProcessMonitor({ isLoading, pendingAssets, verifyingAsset }) {
@@ -278,7 +279,7 @@ function ProcessMonitor({ isLoading, pendingAssets, verifyingAsset }) {
             />
           )}
           {visiblePending.map((asset) => (
-            <ProcessItem detail="Waiting for a completed verification result" key={asset.assetId} title={asset.title} />
+            <ProcessItem detail={asset.verificationStatus === 'PENDING_REVIEW' ? 'Waiting for authenticator review' : 'Waiting for evidence generation'} key={asset.assetId} title={asset.title} />
           ))}
         </div>
       )}

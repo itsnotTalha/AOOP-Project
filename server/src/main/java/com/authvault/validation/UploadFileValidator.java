@@ -108,6 +108,35 @@ public class UploadFileValidator {
                 actualFileSize);
     }
 
+    public ValidatedUploadFile validateControlledTempImage(
+            Path temporaryFile,
+            long actualFileSize) {
+        if (temporaryFile == null) {
+            throw new BadRequestException("Controlled temporary image is required");
+        }
+        long maxSize = maxSizeFor(DigitalAsset.AssetType.IMAGE);
+        if (actualFileSize <= 0) {
+            throw new MalformedFileException("Registered original image is empty");
+        }
+        if (actualFileSize > maxSize) {
+            throw new FileSizeLimitExceededException(
+                    "IMAGE file exceeds the configured maximum size of " + maxSize + " bytes");
+        }
+
+        ensureReadableSize(temporaryFile, actualFileSize);
+        SupportedFormat actualFormat = detectImageFormat(temporaryFile);
+        ensureParseable(temporaryFile, actualFormat);
+        return new ValidatedUploadFile(
+                "controlled-original." + actualFormat.extension,
+                actualFormat.extension,
+                actualFormat.mimeType,
+                actualFileSize);
+    }
+
+    public long imageMaxSizeBytes() {
+        return maxSizeFor(DigitalAsset.AssetType.IMAGE);
+    }
+
     private long maxSizeFor(DigitalAsset.AssetType assetType) {
         return switch (assetType) {
             case IMAGE -> uploadProperties.getImageMaxSize().toBytes();
@@ -196,6 +225,24 @@ public class UploadFileValidator {
             throw exception;
         } catch (IOException exception) {
             throw new MalformedFileException("Uploaded file could not be read", exception);
+        }
+    }
+
+    private SupportedFormat detectImageFormat(Path temporaryFile) {
+        try (InputStream inputStream = Files.newInputStream(temporaryFile)) {
+            byte[] header = inputStream.readNBytes(PNG_SIGNATURE.length);
+            if (startsWith(header, JPEG_SIGNATURE)) {
+                return SupportedFormat.JPEG;
+            }
+            if (startsWith(header, PNG_SIGNATURE)) {
+                return SupportedFormat.PNG;
+            }
+            throw new UnsupportedFileTypeException(
+                    "Registered original content must be JPEG or PNG");
+        } catch (UnsupportedFileTypeException exception) {
+            throw exception;
+        } catch (IOException exception) {
+            throw new MalformedFileException("Registered original image could not be read", exception);
         }
     }
 

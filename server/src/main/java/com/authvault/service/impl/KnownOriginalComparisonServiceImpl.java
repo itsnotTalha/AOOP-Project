@@ -1,8 +1,8 @@
 package com.authvault.service.impl;
 
-import com.authvault.client.ai.AiClientResult;
-import com.authvault.client.ai.AiForensicsClient;
-import com.authvault.dto.ai.AiImageComparisonResponse;
+import com.authvault.client.comparison.ComparisonClientResult;
+import com.authvault.client.comparison.ImageComparisonClient;
+import com.authvault.dto.comparison.ImageComparisonResponse;
 import com.authvault.dto.asset.KnownOriginalCandidateResponse;
 import com.authvault.dto.asset.KnownOriginalComparisonResponse;
 import com.authvault.dto.asset.KnownOriginalComparisonResult;
@@ -37,17 +37,17 @@ public class KnownOriginalComparisonServiceImpl implements KnownOriginalComparis
     private final DigitalAssetRepository digitalAssetRepository;
     private final KnownOriginalCandidateService candidateService;
     private final AssetStorageService assetStorageService;
-    private final AiForensicsClient aiForensicsClient;
+    private final ImageComparisonClient imageComparisonClient;
 
     public KnownOriginalComparisonServiceImpl(
             DigitalAssetRepository digitalAssetRepository,
             KnownOriginalCandidateService candidateService,
             AssetStorageService assetStorageService,
-            AiForensicsClient aiForensicsClient) {
+            ImageComparisonClient imageComparisonClient) {
         this.digitalAssetRepository = digitalAssetRepository;
         this.candidateService = candidateService;
         this.assetStorageService = assetStorageService;
-        this.aiForensicsClient = aiForensicsClient;
+        this.imageComparisonClient = imageComparisonClient;
     }
 
     @Override
@@ -72,7 +72,7 @@ public class KnownOriginalComparisonServiceImpl implements KnownOriginalComparis
         try (InputStream referenceInput = assetStorageService.loadStoredAsset(
                 selected.asset().getStoragePath());
              InputStream targetInput = assetStorageService.loadStoredAsset(target.getStoragePath())) {
-            AiClientResult<AiImageComparisonResponse> clientResult = aiForensicsClient.compareImages(
+            ComparisonClientResult<ImageComparisonResponse> clientResult = imageComparisonClient.compareImages(
                     resource(referenceInput, "reference-image"),
                     safeImageMediaType(selected.asset().getMimeType()),
                     resource(targetInput, "target-image"),
@@ -110,7 +110,7 @@ public class KnownOriginalComparisonServiceImpl implements KnownOriginalComparis
     private KnownOriginalComparisonResponse mapClientResult(
             String targetAssetId,
             KnownOriginalCandidateResponse candidate,
-            AiClientResult<AiImageComparisonResponse> clientResult) {
+            ComparisonClientResult<ImageComparisonResponse> clientResult) {
         return switch (clientResult.status()) {
             case DISABLED -> unavailableResponse(
                     targetAssetId, candidate, AI_SERVICE_DISABLED);
@@ -124,7 +124,7 @@ public class KnownOriginalComparisonServiceImpl implements KnownOriginalComparis
     private KnownOriginalComparisonResponse completedResponse(
             String targetAssetId,
             KnownOriginalCandidateResponse candidate,
-            AiImageComparisonResponse internal) {
+            ImageComparisonResponse internal) {
         if (internal == null
                 || internal.alignment() == null
                 || internal.difference() == null
@@ -132,9 +132,9 @@ public class KnownOriginalComparisonServiceImpl implements KnownOriginalComparis
             return unavailableResponse(targetAssetId, candidate, AI_SERVICE_UNAVAILABLE);
         }
 
-        AiImageComparisonResponse.Alignment alignment = internal.alignment();
-        AiImageComparisonResponse.Difference difference = internal.difference();
-        AiImageComparisonResponse.ChangeMask mask = internal.mask();
+        ImageComparisonResponse.Alignment alignment = internal.alignment();
+        ImageComparisonResponse.Difference difference = internal.difference();
+        ImageComparisonResponse.ChangeMask mask = internal.mask();
         KnownOriginalComparisonResult comparison = KnownOriginalComparisonResult.builder()
                 .status(internal.status())
                 .alignment(KnownOriginalComparisonResult.Alignment.builder()
@@ -229,7 +229,7 @@ public class KnownOriginalComparisonServiceImpl implements KnownOriginalComparis
                 return parsed;
             }
         } catch (RuntimeException ignored) {
-            // The AI service validates actual bytes; do not expose stored metadata failures.
+            // The comparison service validates actual bytes; do not expose stored metadata failures.
         }
         return MediaType.APPLICATION_OCTET_STREAM;
     }

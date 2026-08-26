@@ -63,6 +63,7 @@ export default function AssetFilters({
               { label: 'All statuses', value: '' },
               { label: 'Verified', value: 'VERIFIED' },
               { label: 'Pending', value: 'PENDING' },
+              { label: 'Pending review', value: 'PENDING_REVIEW' },
               { label: 'Rejected', value: 'REJECTED' },
             ]}
             value={filters.status}

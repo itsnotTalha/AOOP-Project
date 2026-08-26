@@ -42,9 +42,19 @@ authvault:
       review-threshold: ${AUTHVAULT_PHASH_REVIEW_THRESHOLD:6}
       possible-match-threshold: ${AUTHVAULT_PHASH_POSSIBLE_MATCH_THRESHOLD:14}
       max-candidates: ${AUTHVAULT_PHASH_MAX_CANDIDATES:5}
-  ai-service:
-    enabled: ${AUTHVAULT_AI_SERVICE_ENABLED:false}
-    base-url: ${AUTHVAULT_AI_SERVICE_URL:http://localhost:8001}
-    connect-timeout: ${AUTHVAULT_AI_CONNECT_TIMEOUT:2s}
-    read-timeout: ${AUTHVAULT_AI_READ_TIMEOUT:10s}
-    analysis-read-timeout: ${AUTHVAULT_AI_ANALYSIS_READ_TIMEOUT:60s}
+      registry-scan-limit: ${AUTHVAULT_PHASH_REGISTRY_SCAN_LIMIT:100}
+  image-comparison:
+    enabled: ${AUTHVAULT_IMAGE_COMPARISON_ENABLED:${AUTHVAULT_AI_SERVICE_ENABLED:false}}
+    base-url: ${AUTHVAULT_IMAGE_COMPARISON_BASE_URL:${AUTHVAULT_AI_SERVICE_URL:http://localhost:8001}}
+    connect-timeout: ${AUTHVAULT_IMAGE_COMPARISON_CONNECT_TIMEOUT:${AUTHVAULT_AI_CONNECT_TIMEOUT:2s}}
+    read-timeout: ${AUTHVAULT_IMAGE_COMPARISON_READ_TIMEOUT:${AUTHVAULT_AI_READ_TIMEOUT:10s}}
+  blockchain:
+    enabled: ${AUTHVAULT_BLOCKCHAIN_ENABLED:false}
+    msp-id: ${AUTHVAULT_FABRIC_MSP_ID:CreatorsOrgMSP}
+    channel: ${AUTHVAULT_FABRIC_CHANNEL:vaultchain-channel}
+    chaincode: ${AUTHVAULT_FABRIC_CHAINCODE:registered-original-registry}
+    peer-endpoint: ${AUTHVAULT_FABRIC_PEER_ENDPOINT:localhost:7051}
+    peer-host-override: ${AUTHVAULT_FABRIC_PEER_HOST_OVERRIDE:peer0.creators.vaultchain.local}
+    tls-cert-path: ${AUTHVAULT_FABRIC_TLS_CERT_PATH:}
+    cert-path: ${AUTHVAULT_FABRIC_CERT_PATH:}
+    private-key-path: ${AUTHVAULT_FABRIC_PRIVATE_KEY_PATH:}

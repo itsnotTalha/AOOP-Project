@@ -22,7 +22,8 @@ class PerceptualHashPropertiesTest {
                         "authvault.verification.phash.enabled=true",
                         "authvault.verification.phash.review-threshold=7",
                         "authvault.verification.phash.possible-match-threshold=16",
-                        "authvault.verification.phash.max-candidates=8")
+                        "authvault.verification.phash.max-candidates=8",
+                        "authvault.verification.phash.registry-scan-limit=120")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     PerceptualHashProperties properties =
@@ -31,6 +32,7 @@ class PerceptualHashPropertiesTest {
                     assertThat(properties.getReviewThreshold()).isEqualTo(7);
                     assertThat(properties.getPossibleMatchThreshold()).isEqualTo(16);
                     assertThat(properties.getMaxCandidates()).isEqualTo(8);
+                    assertThat(properties.getRegistryScanLimit()).isEqualTo(120);
                 });
     }
 
@@ -53,6 +55,13 @@ class PerceptualHashPropertiesTest {
     void rejectsNonPositiveMaxCandidates() {
         contextRunner.withPropertyValues(
                         "authvault.verification.phash.max-candidates=0")
+                .run(context -> assertThat(context).hasFailed());
+    }
+
+    @Test
+    void rejectsNonPositiveRegistryScanLimit() {
+        contextRunner.withPropertyValues(
+                        "authvault.verification.phash.registry-scan-limit=0")
                 .run(context -> assertThat(context).hasFailed());
     }
 }

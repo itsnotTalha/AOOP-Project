@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -79,6 +80,13 @@ public class GlobalExceptionHandler {
                 List.of(exception.getMessage()));
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException exception, HttpServletRequest request) {
+        String message = "You do not have permission to perform this action";
+        return buildResponse(HttpStatus.FORBIDDEN, message, request, List.of(message));
+    }
+
     @ExceptionHandler(FileStorageException.class)
     public ResponseEntity<ErrorResponse> handleFileStorage(
             FileStorageException exception, HttpServletRequest request) {
@@ -90,6 +98,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleVerification(
             VerificationException exception, HttpServletRequest request) {
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, exception.getMessage(), request,
+                List.of(exception.getMessage()));
+    }
+
+    @ExceptionHandler(BlockchainException.class)
+    public ResponseEntity<ErrorResponse> handleBlockchain(
+            BlockchainException exception, HttpServletRequest request) {
+        return buildResponse(exception.getStatus(), exception.getCode(), exception.getMessage(), request,
                 List.of(exception.getMessage()));
     }
 

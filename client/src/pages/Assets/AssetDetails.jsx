@@ -15,6 +15,7 @@ import {
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import * as assetService from '../../services/assetService'
+import * as verificationService from '../../services/verificationService'
 import AssetPreview from './AssetPreview'
 import DeleteAssetDialog from './DeleteAssetDialog'
 import VerificationHistoryList from './VerificationHistoryList'
@@ -41,6 +42,9 @@ export default function AssetDetails() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [evidence, setEvidence] = useState(null)
+  const [evidenceError, setEvidenceError] = useState('')
+  const [isGeneratingEvidence, setIsGeneratingEvidence] = useState(false)
 
   const loadAsset = useCallback(async () => {
     setIsLoading(true)
@@ -85,6 +89,34 @@ export default function AssetDetails() {
 
     return () => { active = false }
   }, [asset?.assetId, historyVersion])
+
+  useEffect(() => {
+    if (!asset?.assetId) return undefined
+    let active = true
+    setEvidenceError('')
+    verificationService.getEvidence(asset.assetId)
+      .then((result) => active && setEvidence(result))
+      .catch((error) => {
+        if (active && error.response?.status !== 404) {
+          setEvidenceError(error.response?.data?.message || 'Verification evidence could not be loaded.')
+        }
+      })
+    return () => { active = false }
+  }, [asset?.assetId])
+
+  const handleGenerateEvidence = async () => {
+    setIsGeneratingEvidence(true)
+    setEvidenceError('')
+    try {
+      const result = await verificationService.generateEvidence(asset.assetId)
+      setEvidence(result)
+      setAsset((current) => ({ ...current, verificationStatus: 'PENDING_REVIEW' }))
+    } catch (error) {
+      setEvidenceError(error.response?.data?.message || 'Verification evidence could not be generated.')
+    } finally {
+      setIsGeneratingEvidence(false)
+    }
+  }
 
   const handleCopyHash = async () => {
     if (!asset?.sha256Hash) return
@@ -155,7 +187,7 @@ export default function AssetDetails() {
   if (isLoading) return <AssetDetailsLoading />
   if (loadError || !asset) return <AssetDetailsError assetsPath={assetsPath} error={loadError} onRetry={loadAsset} />
 
-  const verificationApproved = verificationResult?.hashMatches && verificationResult?.verificationStatus === 'VERIFIED'
+  const verificationApproved = verificationResult?.hashMatches === true
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -176,6 +208,25 @@ export default function AssetDetails() {
 
         <div className="space-y-6">
           <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/30 sm:p-6">
+            <div className="flex items-center gap-2"><ShieldCheck className="text-teal-600" size={19} /><h2 className="font-bold text-slate-900">Human verification</h2></div>
+            <p className="mt-3 text-sm leading-6 text-slate-500">Generate a stable evidence snapshot for an authorized authenticator. Machine evidence does not make the final decision.</p>
+            {evidence ? (
+              <div className="mt-4 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm sm:grid-cols-2">
+                <Metadata label="Evidence status" value={asset.verificationStatus === 'PENDING_REVIEW' ? 'Pending human review' : asset.verificationStatus} />
+                <Metadata label="Similar candidates" value={evidence.similarCandidateCount ?? 'Not applicable'} />
+                <Metadata label="Comparison" value={evidence.comparisonPerformed ? evidence.comparisonStatus : evidence.comparisonReason} />
+                <Metadata label="Fabric lookup" value={evidence.fabricStatus} />
+              </div>
+            ) : (
+              <button className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60" disabled={isGeneratingEvidence} onClick={handleGenerateEvidence} type="button">
+                {isGeneratingEvidence ? <LoaderCircle className="animate-spin" size={17} /> : <ShieldCheck size={17} />}
+                {isGeneratingEvidence ? 'Generating evidence…' : 'Generate verification evidence'}
+              </button>
+            )}
+            {evidenceError && <ErrorMessage message={evidenceError} />}
+          </section>
+
+          <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/30 sm:p-6">
             <div className="flex items-center gap-2">
               {asset.assetType === 'IMAGE' ? <ImageIcon className="text-amber-600" size={19} /> : <FileText className="text-violet-600" size={19} />}
               <h2 className="font-bold text-slate-900">Asset information</h2>
@@ -188,7 +239,7 @@ export default function AssetDetails() {
               <Metadata label="File size" value={formatFileSize(asset.fileSize)} />
               <Metadata label="Uploaded" value={formatDate(asset.uploadDate)} />
               <Metadata label="Verification status" value={asset.verificationStatus || 'PENDING'} />
-              <Metadata label="Last verified" value={formatDate(asset.lastVerifiedAt, 'Not yet verified')} />
+              <Metadata label="Last integrity event" value={formatDate(asset.lastVerifiedAt, 'No integrity event')} />
             </dl>
             <div className="mt-5 border-t border-slate-100 pt-5">
               <Metadata label="Description" value={asset.description || 'No description provided.'} />
@@ -214,7 +265,7 @@ export default function AssetDetails() {
             {verifyError && <ErrorMessage message={verifyError} />}
             {verificationResult && (
               <div className={`mt-4 rounded-xl border p-4 ${verificationApproved ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`} aria-live="polite">
-                <p className={`text-sm font-bold ${verificationApproved ? 'text-emerald-800' : 'text-rose-800'}`}>{verificationApproved ? 'VERIFIED / Approved' : 'REJECTED'}</p>
+                <p className={`text-sm font-bold ${verificationApproved ? 'text-emerald-800' : 'text-rose-800'}`}>{verificationApproved ? 'Integrity match' : 'Integrity check failed'}</p>
                 <p className="mt-1 text-xs text-slate-600">{verificationApproved ? 'The current stored bytes match the upload hash.' : 'The current stored bytes do not match the upload hash, or the stored file could not be read.'}</p>
               </div>
             )}
@@ -285,7 +336,11 @@ function StatusBadge({ prominent = false, status }) {
     : status === 'REJECTED'
       ? 'bg-rose-50 text-rose-700 ring-rose-600/10'
       : 'bg-amber-50 text-amber-700 ring-amber-600/10'
-  const label = status === 'VERIFIED' && prominent ? 'VERIFIED / Approved' : status || 'PENDING'
+  const label = status === 'PENDING_REVIEW'
+    ? 'PENDING REVIEW'
+    : status === 'VERIFIED' && prominent
+      ? 'VERIFIED / Approved'
+      : status || 'PENDING'
   return <span className={`w-fit shrink-0 rounded-full font-bold ring-1 ring-inset ${classes} ${prominent ? 'px-3.5 py-2 text-xs' : 'px-2.5 py-1 text-[10px]'}`}>{label}</span>
 }
 

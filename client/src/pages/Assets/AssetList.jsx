@@ -144,14 +144,14 @@ function AssetRow({ asset, error, isVerifying, listQuery, onVerify, verification
 }
 
 function VerificationResult({ verification }) {
-  const approved = verification.hashMatches && verification.verificationStatus === 'VERIFIED'
+  const approved = verification.hashMatches === true
 
   return (
     <div className={`mt-4 rounded-xl border p-4 ${approved ? 'border-emerald-200 bg-emerald-50/70' : 'border-rose-200 bg-rose-50/70'}`}>
       <div className="flex items-center gap-2">
         {approved ? <CheckCircle2 className="text-emerald-600" size={18} /> : <AlertCircle className="text-rose-600" size={18} />}
         <p className={`text-sm font-bold ${approved ? 'text-emerald-800' : 'text-rose-800'}`}>
-          {approved ? 'VERIFIED / Approved' : 'REJECTED'}
+          {approved ? 'Integrity match' : 'Integrity check failed'}
         </p>
       </div>
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
@@ -180,7 +180,8 @@ function StatusBadge({ status }) {
       ? 'bg-rose-50 text-rose-700 ring-rose-600/10'
       : 'bg-amber-50 text-amber-700 ring-amber-600/10'
 
-  return <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ring-inset ${classes}`}>{status || 'PENDING'}</span>
+  const label = status === 'PENDING_REVIEW' ? 'PENDING REVIEW' : status || 'PENDING'
+  return <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ring-inset ${classes}`}>{label}</span>
 }
 
 function LoadingState() {

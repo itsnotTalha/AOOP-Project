@@ -25,8 +25,14 @@ replay_pid*
 
 .vscode/
 
+# Local environment overrides may contain credentials.
+.env
+**/.env
+!.env.example
+!**/.env.example
+
 # Frontend build output
 client/dist/
 
-# Local AI model assets are manually provisioned and must never be committed.
-ai-service/model-assets/
+# Legacy local model assets must never be committed.
+comparison-service/model-assets/

@@ -9,3 +9,8 @@ export async function register(userData) {
   const response = await api.post('/auth/register', userData)
   return response.data.data
 }
+
+export async function getCurrentUser() {
+  const response = await api.get('/users/me')
+  return response.data.data
+}

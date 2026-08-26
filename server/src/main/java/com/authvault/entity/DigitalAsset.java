@@ -108,6 +108,11 @@ public class DigitalAsset {
     @EqualsAndHashCode.Exclude
     private List<VerificationHistory> verificationHistory = new ArrayList<>();
 
+    @OneToMany(mappedBy = "asset", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<VerificationEvidence> verificationEvidence = new ArrayList<>();
+
     @OneToMany(mappedBy = "asset", cascade = CascadeType.ALL)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
@@ -135,6 +140,7 @@ public class DigitalAsset {
 
     public enum VerificationStatus {
         PENDING,
+        PENDING_REVIEW,
         VERIFIED,
         REJECTED
     }

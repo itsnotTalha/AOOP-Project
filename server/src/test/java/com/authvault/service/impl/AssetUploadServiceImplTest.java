@@ -113,7 +113,7 @@ class AssetUploadServiceImplTest {
         assertEquals("image/jpeg", response.getMimeType());
         assertEquals(imageBytes.length, response.getFileSize());
         assertEquals(expectedHash, response.getSha256Hash());
-        assertEquals("VERIFIED", response.getVerificationStatus());
+        assertEquals("PENDING", response.getVerificationStatus());
         assertNotNull(response.getUploadDate());
 
         assertSame(currentUser, asset.getOwner());
@@ -278,7 +278,7 @@ class AssetUploadServiceImplTest {
     }
 
     private void assertUploadVerification(DigitalAsset asset) {
-        assertEquals(DigitalAsset.VerificationStatus.VERIFIED, asset.getVerificationStatus());
+        assertEquals(DigitalAsset.VerificationStatus.PENDING, asset.getVerificationStatus());
         assertEquals(1, asset.getVerificationHistory().size());
         VerificationHistory history = asset.getVerificationHistory().getFirst();
         assertSame(asset, history.getAsset());

@@ -10,6 +10,8 @@ import Landing from '../pages/Landing/Landing'
 import Login from '../pages/Login/Login'
 import Register from '../pages/Register/Register'
 import ProtectedRoute from './ProtectedRoute'
+import RoleProtectedRoute from './RoleProtectedRoute'
+import AuthenticatorReviews from '../pages/Authenticator/AuthenticatorReviews'
 
 export default function AppRoutes() {
   return (
@@ -28,6 +30,9 @@ export default function AppRoutes() {
           <Route element={<Dashboard />} path="/dashboard" />
           <Route element={<Assets />} path="/assets" />
           <Route element={<AssetDetails />} path="/assets/:assetId" />
+          <Route element={<RoleProtectedRoute roles={['AUTHENTICATOR', 'ADMIN']} />}>
+            <Route element={<AuthenticatorReviews />} path="/authenticator/reviews" />
+          </Route>
         </Route>
       </Route>
     </Routes>

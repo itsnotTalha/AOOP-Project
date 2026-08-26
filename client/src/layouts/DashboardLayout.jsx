@@ -6,13 +6,14 @@ import {
   Menu,
   Search,
   ShieldCheck,
+  ClipboardCheck,
   X,
 } from 'lucide-react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../hooks/useAuth'
 
-const navigation = [
+const ownerNavigation = [
   { label: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
   { label: 'Assets', icon: Files, href: '/assets' },
 ]
@@ -32,6 +33,9 @@ export default function DashboardLayout() {
     .join('')
     .slice(0, 2)
     .toUpperCase()
+  const navigation = currentUser?.role === 'AUTHENTICATOR' || currentUser?.role === 'ADMIN'
+    ? [...ownerNavigation, { label: 'Verification reviews', icon: ClipboardCheck, href: '/authenticator/reviews' }]
+    : ownerNavigation
 
   useEffect(() => {
     if (!location.pathname.startsWith('/assets')) setSearch('')
