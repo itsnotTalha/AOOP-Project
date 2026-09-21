@@ -2,7 +2,7 @@
 
 Audit dates: 2026-09-20–2026-09-21. Companion: [migration contract](SPRING_BOOT_MIGRATION_CONTRACT.md).
 
-This maps **all 53 named tests in eight `server/tests/*.test.js` files**. Every Java target below is proposed and **not implemented**. Unchecked means outstanding, regardless of whether its Node reference currently passes. Existing service-level assertions about internal `error.code` must not become HTTP response fields. Java integration tests should use JUnit5/Spring Boot Test and real disposable SQLite, not an in-memory database with different SQL/constraints.
+This maps **all 53 named tests in eight `server/tests/*.test.js` files**. Java targets remain proposed unless marked complete. The database migration replacement is now implemented in the scaffold; all business-feature replacements remain outstanding. Unchecked means outstanding, regardless of whether its Node reference currently passes. Existing service-level assertions about internal `error.code` must not become HTTP response fields. Java integration tests should use JUnit5/Spring Boot Test and real disposable SQLite, not an in-memory database with different SQL/constraints.
 
 ## Test-by-test replacement map
 
@@ -99,7 +99,7 @@ Source links point to exact existing test declarations. Preserve every assertion
 
 | Done | Exact Node test | Phase | Proposed Java replacement | Required assertions |
 | --- | --- | --- | --- | --- |
-| [ ] | [database initialization adds report ownership to the legacy verification table](../server/tests/verificationMigration.test.js#L24) | 2 | `LegacySchemaMigrationIT#initializeOldVerificationTable` | Legacy asset_id NOT NULL table ->user_id added, asset_id nullable, user index present; four Vault tables/security columns/PK; listing fields/reference+active unique indexes; history fields. Use disposable SQLite fixture, never original. |
+| [x] | [database initialization adds report ownership to the legacy verification table](../server/tests/verificationMigration.test.js#L24) | 2 | `SchemaInitializerTest#migratesLegacyRowsWithoutLosingReportsCredentialsOrFiles` plus fresh-schema, marketplace and constraint tests | Legacy asset_id NOT NULL table ->user_id added, asset_id nullable, user index present; four Vault tables/security columns/PK; listing fields/reference+active unique indexes; history fields. Use disposable SQLite fixture, never original. |
 
 ## What the current suite does not establish
 
@@ -138,7 +138,7 @@ Normalize only nondeterministic correspondence (random VT/ML/TX ids, tokens/jti,
 | Phase | Required exit evidence | State |
 | --- | --- | --- |
 | 1 / contract (Prompt0) | All source layers+client services audited; endpoint/schema/security/risk contract and53-test map written | Documentation complete; runtime limitations stated |
-| 2 / scaffold | spring-server Java21/Maven scaffold and disposable DB initialization; no original writes | [ ] |
+| 2 / scaffold | spring-server Java21/Maven scaffold and disposable DB initialization; no original writes | Implemented; see [scaffold README](../spring-server/README.md) and validation below |
 | 3 / Auth | Auth/health/security contract and interoperability tests | [ ] |
 | 4 / Assets | Storage/metadata/SHA/pHash/check/protected-content parity and immutable golden vectors | [ ] |
 | 5 / Vaults | Grants/attempts/memberships/legacy security/race tests | [ ] |
@@ -147,3 +147,20 @@ Normalize only nondeterministic correspondence (random VT/ML/TX ids, tokens/jti,
 | 8 / Commerce | Wallet/listing/atomic sale/rollback/concurrency/history | [ ] |
 | 9 / Admin | Dashboard/admin complete role/DTO/aggregation/date matrix | [ ] |
 | 10 / Cutover | Full53 Node baseline, all replacements and added gates, differential API+DB+file results, unchanged-client smoke; only then runtime script switch | [ ] |
+
+## Scaffold implementation — 2026-09-22
+
+The new `spring-server/` has Java21/Spring Boot/Maven, JDBC SQLite initialization,
+foreign keys per connection, CORS, health and shared JSON error handling. The
+legacy Node server/client and runtime scripts remain unchanged. The scaffold's
+default database is deliberately isolated at `./data/vaultchain.sqlite`;
+`DATABASE_PATH` can select a disposable legacy copy. This overrides the Node
+default-path assumption for this phase only, as documented in its README.
+
+Validation: all22 new JUnit tests passed with temporary file-backed SQLite,
+including synthetic data-bearing legacy migrations and a real random-port HTTP
+server. These cover the existing verification-migration test and additional
+startup, error, configuration, foreign-key, idempotency, rollback and backfill
+scenarios. Full Node-vs-Java API parity, authentication, and the other52 reference
+test replacements are still outstanding. The health part of phase3 is available;
+that does not complete phase3's authentication/security gate.
