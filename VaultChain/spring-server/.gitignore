@@ -1,7 +1,0 @@
-/target/
-/data/
-*.sqlite
-*.sqlite-*
-*.db
-*.db-*
-.env

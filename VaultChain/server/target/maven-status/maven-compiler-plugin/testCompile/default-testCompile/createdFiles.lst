@@ -1,0 +1,17 @@
+com/vaultchain/exception/ApiExceptionHandlerTest$Failures.class
+com/vaultchain/ApplicationTest.class
+com/vaultchain/AdminApiTest.class
+com/vaultchain/AssetApiTest.class
+com/vaultchain/MarketplaceApiTest.class
+com/vaultchain/BlockHashTest.class
+com/vaultchain/DocumentApiTest.class
+com/vaultchain/repository/SchemaInitializerTest.class
+com/vaultchain/AuthApiTest$Response.class
+com/vaultchain/AssetFingerprintsTest.class
+com/vaultchain/WalletApiTest.class
+com/vaultchain/VaultApiTest.class
+com/vaultchain/config/DatabaseConfigurationTest.class
+com/vaultchain/AuthCompatibilityTest.class
+com/vaultchain/AuthApiTest.class
+com/vaultchain/VerificationApiTest.class
+com/vaultchain/exception/ApiExceptionHandlerTest.class

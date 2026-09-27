@@ -21,7 +21,7 @@ Source links point to exact existing test declarations. Preserve every assertion
 
 | Done | Exact Node test | Phase | Proposed Java replacement | Required assertions |
 | --- | --- | --- | --- | --- |
-| [ ] | [authentication middleware rejects missing credentials and accepts a valid JWT](../server/tests/assetApi.test.js#L168) | 3 | `AuthenticationIT#validateBearerAndFingerprint` | Missing credentials ->401 Unauthorized; valid JWT populates current id and exact-token SHA-256 fingerprint. |
+| [x] | [authentication middleware rejects missing credentials and accepts a valid JWT](../server/tests/assetApi.test.js#L168) | 3 | `AuthApiTest#bearerParsingAndPublicEndpointsMatchExpress + AuthCompatibilityTest#acceptsActualNodeTokensAndFingerprints` | Missing credentials ->401 Unauthorized; valid JWT populates current id and exact-token SHA-256 fingerprint. |
 | [ ] | [upload still creates hashes and metadata without exposing a filesystem path](../server/tests/assetApi.test.js#L182) | 4 | `AssetUploadIT#persistFingerprintsAndMetadata` | Upload creates asset/hash/metadata, true hasMetadata, no filesystem path in public asset. |
 | [ ] | [asset list is owner-scoped, omits private paths, and returns newest first](../server/tests/assetApi.test.js#L197) | 4 | `AssetReadIT#scopeAndOrderList` | Only caller-owned assets, newest created_at/id first; omit filePath and ownerId; foreign caller gets empty list. |
 | [ ] | [asset detail, hash, metadata, and content lookup enforce ownership](../server/tests/assetApi.test.js#L221) | 4 | `AssetReadIT#enforceOwnershipEveryLookup` | Owner can read detail/hash/metadata/content lookup; foreign account gets404 Asset not found for each. |
@@ -63,10 +63,10 @@ Source links point to exact existing test declarations. Preserve every assertion
 
 | Done | Exact Node test | Phase | Proposed Java replacement | Required assertions |
 | --- | --- | --- | --- | --- |
-| [ ] | [profile update normalizes values and returns the public account](../server/tests/authAccount.test.js#L36) | 3 | `AccountIT#normalizeProfileAndPublicShape` | Trim name/lowercase email, no password hash, /me snake_case full_name updated. |
-| [ ] | [profile update rejects invalid and already registered emails](../server/tests/authAccount.test.js#L49) | 3 | `AccountIT#rejectInvalidOrDuplicateEmail` | Invalid email400 Email is invalid; existing other email409 Email is already registered. |
-| [ ] | [password change requires the correct current password and enforces minimum length](../server/tests/authAccount.test.js#L60) | 3 | `AccountIT#validatePasswordChange` | Wrong current401 Current password is incorrect; short new400 exact length message. |
-| [ ] | [password change invalidates the old password and accepts the new password](../server/tests/authAccount.test.js#L71) | 3 | `AccountIT#replacePassword` | Old password login401; new password login succeeds for same id. This test does NOT establish JWT revocation. |
+| [x] | [profile update normalizes values and returns the public account](../server/tests/authAccount.test.js#L36) | 3 | `AuthApiTest#registrationLoginProfileAndMeMatchLegacyShapes` | Trim name/lowercase email, no password hash, /me snake_case full_name updated. |
+| [x] | [profile update rejects invalid and already registered emails](../server/tests/authAccount.test.js#L49) | 3 | `AuthApiTest#registrationAndProfileValidationAndDuplicateStatuses` | Invalid email400 Email is invalid; existing other email409 Email is already registered. |
+| [x] | [password change requires the correct current password and enforces minimum length](../server/tests/authAccount.test.js#L60) | 3 | `AuthApiTest#passwordChangeValidationsAndExistingTokenRemainsUsable` | Wrong current401 Current password is incorrect; short new400 exact length message. |
+| [x] | [password change invalidates the old password and accepts the new password](../server/tests/authAccount.test.js#L71) | 3 | `AuthApiTest#passwordChangeValidationsAndExistingTokenRemainsUsable` | Old password login401; new password login succeeds for same id. This test does NOT establish JWT revocation. |
 
 ### coreWorkflow.test.js — 1 tests
 
@@ -139,7 +139,7 @@ Normalize only nondeterministic correspondence (random VT/ML/TX ids, tokens/jti,
 | --- | --- | --- |
 | 1 / contract (Prompt0) | All source layers+client services audited; endpoint/schema/security/risk contract and53-test map written | Documentation complete; runtime limitations stated |
 | 2 / scaffold | spring-server Java21/Maven scaffold and disposable DB initialization; no original writes | Implemented; see [scaffold README](../spring-server/README.md) and validation below |
-| 3 / Auth | Auth/health/security contract and interoperability tests | [ ] |
+| 3 / Auth (uploaded Prompt2) | Auth/health/security contract and interoperability tests | Implemented; see authentication validation below |
 | 4 / Assets | Storage/metadata/SHA/pHash/check/protected-content parity and immutable golden vectors | [ ] |
 | 5 / Vaults | Grants/attempts/memberships/legacy security/race tests | [ ] |
 | 6 / Verification | Ranking/privacy/history/legacy reports/cleanup | [ ] |
@@ -161,6 +161,29 @@ Validation: all22 new JUnit tests passed with temporary file-backed SQLite,
 including synthetic data-bearing legacy migrations and a real random-port HTTP
 server. These cover the existing verification-migration test and additional
 startup, error, configuration, foreign-key, idempotency, rollback and backfill
-scenarios. Full Node-vs-Java API parity, authentication, and the other52 reference
-test replacements are still outstanding. The health part of phase3 is available;
-that does not complete phase3's authentication/security gate.
+scenarios. This records the scaffold checkpoint; authentication progress follows
+below. Full cross-backend parity remains a separate cutover gate.
+
+## Authentication implementation — 2026-09-22 (uploaded Prompt2)
+
+All six auth endpoints are implemented in `spring-server`, including exact public
+DTO casing, validation/status messages, DB-refreshed identity/role/status, atomic
+user/wallet registration, legacy BCrypt and JWT behavior, and exact-token Vault
+grant revocation through an interface. No asset/Vault business endpoints or
+runtime cutover are included.
+
+Validation: 33 Java tests pass (22 scaffold + 8 HTTP/auth integration + 3 crypto
+compatibility). `AuthApiTest` covers the four Node account scenarios above plus
+registration rollback on forced wallet failure, all five role refreshes,
+suspension/deletion, existing signed Node tokens and unchanged stored hashes,
+and logout isolation between two tokens protecting two Vaults. The committed
+`legacy-auth.json` fixture was generated by bcrypt 5.1.1/jsonwebtoken 9.0.3 in an
+isolated temporary installation. Java accepts Node HS256/384/512 vectors and
+BCrypt edge cases; Node independently verified the Java JWT and all eight Java
+BCrypt vectors. `JWT_EXPIRES_IN` is checked against actual Node duration results,
+including bare numbers interpreted as milliseconds.
+
+Six of the 53 reference scenarios now have Java replacements (one schema,
+one authentication middleware, four account). Remaining 47 and the full Node
+baseline/differential HTTP runner are still outstanding. Java tests always use
+temporary SQLite databases; server/client/schema/data/runtime scripts are unchanged.

@@ -2,6 +2,7 @@ import { AlertCircle, CheckCircle2, FileImage, UploadCloud, X } from 'lucide-rea
 import { useEffect, useRef, useState } from 'react';
 
 import { assetService } from '../../services/assetService';
+import BlockchainFlow from '../blockchain/BlockchainFlow';
 import Button from '../ui/Button';
 
 export default function UploadAssetModal({ open, onClose, onUploaded, initialFile = null }) {
@@ -49,13 +50,30 @@ export default function UploadAssetModal({ open, onClose, onUploaded, initialFil
 	return (
 		<div className="modal" role="dialog" aria-modal="true" aria-labelledby="upload-title">
 			<button className="modal__backdrop" aria-label="Close upload dialog" onClick={closeModal} />
-			<section className="modal__card">
-				<header className="modal__header"><div><span className="modal__icon"><UploadCloud size={19} /></span><div><h2 id="upload-title">Upload digital asset</h2><p>Create a cryptographic fingerprint and inspect image metadata.</p></div></div><button type="button" className="icon-button" onClick={closeModal} aria-label="Close"><X size={18} /></button></header>
+			<section className="modal__card" style={{ maxWidth: result ? '680px' : '560px', width: '95vw', maxHeight: '90vh' }}>
+				<header className="modal__header"><div><span className="modal__icon"><UploadCloud size={19} /></span><div><h2 id="upload-title">{result ? 'Asset Registered & Minted' : 'Upload digital asset'}</h2><p>{result ? 'Cryptographic fingerprint and blockchain flow generated.' : 'Create a cryptographic fingerprint and inspect image metadata.'}</p></div></div><button type="button" className="icon-button" onClick={closeModal} aria-label="Close"><X size={18} /></button></header>
 				{result ? (
-					<div className="upload-success">
-						<span><CheckCircle2 size={30} /></span><h3>Asset identity created</h3><p>Your image was stored as asset #{result.asset?.id} and its hashes and metadata were generated successfully.</p>
-						<div className="upload-success__hash"><small>SHA-256</small><code>{result.hash?.sha256}</code></div>
-						<Button onClick={closeModal}>Done</Button>
+					<div className="modal__form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+						<div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', background: 'rgba(66, 214, 157, 0.08)', borderRadius: '12px', border: '1px solid rgba(66, 214, 157, 0.2)' }}>
+							<CheckCircle2 size={26} color="var(--success)" style={{ flexShrink: 0 }} />
+							<div>
+								<strong style={{ fontSize: '0.88rem', display: 'block' }}>{result.asset?.title}</strong>
+								<span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Registered as #{result.asset?.id} · Perceptual hash & metadata stored</span>
+							</div>
+						</div>
+
+						<div className="upload-success__hash" style={{ margin: 0 }}>
+							<small>SHA-256 HASH</small>
+							<code>{result.hash?.sha256}</code>
+						</div>
+
+						{result.blockchain ? (
+							<BlockchainFlow flow={result.blockchain} title="Image Ledger Provenance Flow" />
+						) : null}
+
+						<footer className="modal__footer" style={{ marginTop: '6px' }}>
+							<Button onClick={closeModal}>Done</Button>
+						</footer>
 					</div>
 				) : (
 					<form className="form-grid modal__form" onSubmit={handleSubmit}>
