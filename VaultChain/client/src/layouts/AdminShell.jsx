@@ -14,8 +14,8 @@ export default function AdminShell() {
 	const location = useLocation();
 	const navigate = useNavigate();
 	const [open, setOpen] = useState(false);
-	const [collapsed, setCollapsed] = useState(() => localStorage.getItem('vaultchain-admin-sidebar') === 'collapsed');
-	function toggleCollapsed() { setCollapsed((value) => { localStorage.setItem('vaultchain-admin-sidebar', value ? 'expanded' : 'collapsed'); return !value; }); }
+	const [collapsed, setCollapsed] = useState(() => (localStorage.getItem('authvault-admin-sidebar') || localStorage.getItem('vaultchain-admin-sidebar')) === 'collapsed');
+	function toggleCollapsed() { setCollapsed((value) => { localStorage.setItem('authvault-admin-sidebar', value ? 'expanded' : 'collapsed'); return !value; }); }
 	async function handleLogout() { await logout(); navigate('/login', { replace: true }); }
 	return <div className={`admin-shell ${collapsed ? 'is-sidebar-collapsed' : ''}`}>
 		<button className={`admin-scrim ${open ? 'is-open' : ''}`} type="button" onClick={() => setOpen(false)} aria-label="Close menu"/>

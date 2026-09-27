@@ -114,7 +114,7 @@ export default function SellDocumentModal({ document, onClose, onListed }) {
 						</div>
 
 						<div className="field" style={{ marginTop: '12px' }}>
-							<label htmlFor="listing-price">Price in VaultChain Credits</label>
+							<label htmlFor="listing-price">Price in AuthVault Credits</label>
 							<div style={{ position: 'relative' }}>
 								<input
 									id="listing-price"

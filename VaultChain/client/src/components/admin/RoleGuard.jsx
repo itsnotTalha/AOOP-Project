@@ -11,7 +11,7 @@ export default function RoleGuard({ roles = ADMIN_ROLES, children }) {
 	if (authLoading) return <LoadingState fullScreen label="Verifying administrator access" />;
 	if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
 	if (!roles.includes(normalizeRole(user.role))) {
-		return <main className="admin-access-denied"><span><ShieldAlert size={28}/></span><h1>Administrator access required</h1><p>Your account does not have permission to open the VaultChain control center.</p><a href="/dashboard">Return to your workspace</a></main>;
+		return <main className="admin-access-denied"><span><ShieldAlert size={28}/></span><h1>Administrator access required</h1><p>Your account does not have permission to open the AuthVault control center.</p><a href="/dashboard">Return to your workspace</a></main>;
 	}
 	return children;
 }

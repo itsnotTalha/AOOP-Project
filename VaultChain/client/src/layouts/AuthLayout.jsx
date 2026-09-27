@@ -6,7 +6,7 @@ import BrandLogo from '../components/ui/BrandLogo';
 export default function AuthLayout({ children, mode = 'login' }) {
 	return (
 		<main className="auth-layout">
-			<section className="auth-story" aria-label="VaultChain security overview">
+			<section className="auth-story" aria-label="AuthVault security overview">
 				<Link to="/" className="auth-story__brand"><BrandLogo /></Link>
 				<div className="auth-story__content">
 					<span className="eyebrow"><Sparkles size={13} /> Digital ownership, secured</span>

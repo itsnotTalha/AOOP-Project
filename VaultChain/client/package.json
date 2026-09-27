@@ -1,5 +1,5 @@
 {
-	"name": "vaultchain-client",
+	"name": "authvault-client",
 	"private": true,
 	"version": "1.0.0",
 	"type": "module",

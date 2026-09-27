@@ -63,7 +63,7 @@ export default function DashboardPage() {
 		<div className="dashboard-stats">{stats.map((stat) => <StatCard key={stat.label} {...stat} pending={!summary && !error}/>)}</div>
 
 		<section className="verification-journey-card">
-			<header><div><span className="journey-kicker"><Sparkles size={13}/> How VaultChain builds trust</span><h2>From source image to verifiable ownership</h2><p>Every asset follows the same transparent evidence pipeline. Each result can be inspected, repeated, and compared.</p></div><Button variant="secondary" size="sm" onClick={() => navigate('/verification')}>Open Verification Center <ArrowRight size={15}/></Button></header>
+			<header><div><span className="journey-kicker"><Sparkles size={13}/> How AuthVault builds trust</span><h2>From source image to verifiable ownership</h2><p>Every asset follows the same transparent evidence pipeline. Each result can be inspected, repeated, and compared.</p></div><Button variant="secondary" size="sm" onClick={() => navigate('/verification')}>Open Verification Center <ArrowRight size={15}/></Button></header>
 			<VerificationTimeline compact/>
 			<footer><ShieldCheck size={16}/><span><strong>Evidence, not a black box.</strong> Cryptographic fingerprints, visual similarity, and ownership records remain independently inspectable.</span></footer>
 		</section>
@@ -77,7 +77,7 @@ export default function DashboardPage() {
 
 		<div className="dashboard-lower-grid">
 			<SectionCard title="Recent activity" description="Your latest ownership and verification events" action={<button type="button" className="text-button" onClick={() => navigate('/activity')}>View all <ArrowRight size={13}/></button>}>{!summary && !error ? <LoadingState label="Loading activity"/> : activities.length ? <ActivityTimeline compact items={activities} onSelect={openActivity}/> : <EmptyState icon={Fingerprint} title="No activity yet" description="Your verified asset journey will appear here."/>}</SectionCard>
-			<SectionCard className="dashboard-upload-card"><div className="dashboard-upload-card__icon"><UploadCloud size={25}/></div><h2>Protect your next original</h2><p>Upload once. VaultChain extracts metadata, generates fingerprints, checks duplicates, and creates a reusable ownership record.</p><div className="dashboard-upload-card__chips"><span>SHA-256</span><span>pHash</span><span>EXIF</span><span>Duplicate scan</span></div><Button icon={UploadCloud} onClick={() => setUploadOpen(true)}>Choose an image</Button></SectionCard>
+			<SectionCard className="dashboard-upload-card"><div className="dashboard-upload-card__icon"><UploadCloud size={25}/></div><h2>Protect your next original</h2><p>Upload once. AuthVault extracts metadata, generates fingerprints, checks duplicates, and creates a reusable ownership record.</p><div className="dashboard-upload-card__chips"><span>SHA-256</span><span>pHash</span><span>EXIF</span><span>Duplicate scan</span></div><Button icon={UploadCloud} onClick={() => setUploadOpen(true)}>Choose an image</Button></SectionCard>
 		</div>
 		{selectedAsset ? <AssetInspector asset={selectedAsset} onClose={() => setSelectedAsset(null)}/> : null}
 		<UploadAssetModal open={uploadOpen} onClose={() => setUploadOpen(false)} onUploaded={() => { loadSummary(); setUploadOpen(false); }}/>

@@ -31,7 +31,7 @@ export default function AppShell() {
 	const { user, logout } = useAuth();
 	const { theme, toggleTheme } = useTheme();
 	const [drawerOpen, setDrawerOpen] = useState(false);
-	const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('vaultchain-sidebar') === 'collapsed');
+	const [collapsed, setCollapsed] = useState(() => (window.localStorage.getItem('authvault-sidebar') || window.localStorage.getItem('vaultchain-sidebar')) === 'collapsed');
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [query, setQuery] = useState('');
 	const firstName = user?.fullName?.split(' ')[0] || 'Member';
@@ -50,7 +50,7 @@ export default function AppShell() {
 
 	function toggleCollapsed() {
 		setCollapsed((current) => {
-			window.localStorage.setItem('vaultchain-sidebar', current ? 'expanded' : 'collapsed');
+			window.localStorage.setItem('authvault-sidebar', current ? 'expanded' : 'collapsed');
 			return !current;
 		});
 	}

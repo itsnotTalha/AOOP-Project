@@ -1,4 +1,4 @@
-/* VaultChain product UI layer. Imported last so legacy feature styles inherit the new tokens. */
+/* AuthVault product UI layer. Imported last so legacy feature styles inherit the new tokens. */
 html, body, #root { min-height: 100%; }
 body { background: var(--bg); color: var(--text); transition: background .2s ease, color .2s ease; }
 ::selection { background: var(--primary-soft); color: var(--text); }

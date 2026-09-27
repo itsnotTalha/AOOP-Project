@@ -61,12 +61,12 @@ export default function ProfilePage() {
 		}
 	}
 
-	const name = user?.fullName || 'VaultChain member';
+	const name = user?.fullName || 'AuthVault member';
 	const joined = user?.createdAt ? new Date(user.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Unavailable';
 
 	return (
 		<>
-			<PageHeader eyebrow="Account" title="Profile & settings" description="Manage your VaultChain identity and account password." />
+			<PageHeader eyebrow="Account" title="Profile & settings" description="Manage your AuthVault identity and account password." />
 			<div className="profile-grid">
 				<SectionCard className="profile-summary"><div className="profile-avatar">{name.charAt(0).toUpperCase()}</div><h2>{name}</h2><p>{user?.email}</p><div className="profile-summary__meta"><StatusBadge tone="success">Authenticated</StatusBadge><StatusBadge>{user?.role || 'user'}</StatusBadge></div></SectionCard>
 				<SectionCard title="Account details" description="Your current authenticated account information."><div className="profile-details"><div className="profile-detail"><span><UserRound size={16}/></span><div><small>Full name</small><strong>{name}</strong></div></div><div className="profile-detail"><span><Mail size={16}/></span><div><small>Email address</small><strong>{user?.email || 'Unavailable'}</strong></div></div><div className="profile-detail"><span><ShieldCheck size={16}/></span><div><small>Account role</small><strong>{user?.role || 'user'}</strong></div></div><div className="profile-detail"><span><CalendarDays size={16}/></span><div><small>Member since</small><strong>{joined}</strong></div></div></div></SectionCard>

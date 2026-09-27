@@ -50,7 +50,7 @@ function PublicOnlyRoute({ children }) {
 
 function AppRoutes() {
 	return (
-		<Suspense fallback={<LoadingState fullScreen label="Loading VaultChain"/>}><Routes>
+		<Suspense fallback={<LoadingState fullScreen label="Loading AuthVault"/>}><Routes>
 			<Route path="/" element={<LandingPage />} />
 			<Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
 			<Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
