@@ -1,0 +1,17 @@
+com/authvault/AssetApiTest.class
+com/authvault/BlockHashTest.class
+com/authvault/DocumentApiTest.class
+com/authvault/AuthApiTest.class
+com/authvault/MarketplaceApiTest.class
+com/authvault/WalletApiTest.class
+com/authvault/repository/SchemaInitializerTest.class
+com/authvault/exception/ApiExceptionHandlerTest.class
+com/authvault/AdminApiTest.class
+com/authvault/ApplicationTest.class
+com/authvault/AuthCompatibilityTest.class
+com/authvault/AssetFingerprintsTest.class
+com/authvault/VaultApiTest.class
+com/authvault/exception/ApiExceptionHandlerTest$Failures.class
+com/authvault/VerificationApiTest.class
+com/authvault/AuthApiTest$Response.class
+com/authvault/config/DatabaseConfigurationTest.class
