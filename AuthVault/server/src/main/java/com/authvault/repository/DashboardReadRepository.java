@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.hibernate.query.NativeQuery;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -52,7 +53,18 @@ public class DashboardReadRepository {
               UNION ALL SELECT 'document_upload',original_name,NULL,'DOC-'||printf('%06d',id),ocr_status,NULL,id,created_at,id
                         FROM documents WHERE owner_id=?1
             ) ORDER BY created_at DESC,sequence DESC LIMIT 8
-            """).setParameter(1,userId).getResultList()) {
+            """).unwrap(NativeQuery.class)
+            // SQLite UNION metadata depends on the first row, including its NULLs.
+            // Declare every scalar so later text references/statuses stay textual.
+            .addScalar("activity_type",String.class)
+            .addScalar("title",String.class)
+            .addScalar("amount",Double.class)
+            .addScalar("reference",String.class)
+            .addScalar("status",String.class)
+            .addScalar("asset_id",Long.class)
+            .addScalar("document_id",Long.class)
+            .addScalar("created_at",java.sql.Timestamp.class)
+            .setParameter(1,userId).getResultList()) {
             Object[] values=(Object[])raw;
             activities.add(row(new String[]{"type","title","amount","reference","status","assetId","documentId","createdAt"},values));
         }

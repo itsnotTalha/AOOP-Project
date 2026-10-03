@@ -15,4 +15,5 @@
 /home/potato/Project/AOOP-Project/AuthVault/server/src/test/java/com/authvault/WalletApiTest.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/test/java/com/authvault/config/DatabaseConfigurationTest.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/test/java/com/authvault/exception/ApiExceptionHandlerTest.java
+/home/potato/Project/AOOP-Project/AuthVault/server/src/test/java/com/authvault/repository/DashboardReadRepositoryTest.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/test/java/com/authvault/repository/SchemaInitializerTest.java
