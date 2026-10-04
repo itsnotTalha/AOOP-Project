@@ -80,4 +80,18 @@ async function getContentObjectUrl(id) {
 	return URL.createObjectURL(await response.blob());
 }
 
-export const assetService = { getAssets, getAsset, uploadAsset, checkOwnership, getMetadata, getHashes, getOwnershipHistory, getContentObjectUrl };
+async function deleteAsset(id) {
+	return request(`/assets/${id}`, { method: 'DELETE' });
+}
+
+export const assetService = {
+	getAssets,
+	getAsset,
+	uploadAsset,
+	checkOwnership,
+	getMetadata,
+	getHashes,
+	getOwnershipHistory,
+	getContentObjectUrl,
+	deleteAsset,
+};

@@ -1,4 +1,4 @@
-import { ArrowUpRight, Fingerprint, LockKeyhole } from 'lucide-react';
+import { ArrowUpRight, Fingerprint, LockKeyhole, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from '../ui/StatusBadge';
 import AssetThumbnail from './AssetThumbnail';
@@ -9,7 +9,7 @@ function formatFileSize(bytes) {
 	return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
 
-export default function AssetCard({ asset, onInspect, onPreview, view = 'grid' }) {
+export default function AssetCard({ asset, onInspect, onPreview, onDelete, view = 'grid' }) {
 	const navigate = useNavigate();
 	const dimensions = asset.width && asset.height ? `${asset.width} × ${asset.height}` : null;
 	const uploadedAt = asset.createdAt ? new Date(asset.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
@@ -68,7 +68,7 @@ export default function AssetCard({ asset, onInspect, onPreview, view = 'grid' }
 					) : (
 						<>
 							<span>{uploadedAt ? `Uploaded ${uploadedAt}` : 'Upload date unavailable'}</span>
-							<div>
+							<div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
 								<button
 									type="button"
 									className="text-button"
@@ -80,6 +80,22 @@ export default function AssetCard({ asset, onInspect, onPreview, view = 'grid' }
 								>
 									Inspect asset
 								</button>
+								{onDelete ? (
+									<button
+										type="button"
+										className="text-button text-button--danger"
+										onClick={(event) => {
+											event.stopPropagation();
+											onDelete(asset);
+										}}
+										aria-label={`Delete ${asset.title}`}
+										title="Delete asset"
+										style={{ color: '#ef4444', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+									>
+										<Trash2 size={13} />
+										<span>Delete</span>
+									</button>
+								) : null}
 							</div>
 						</>
 					)}

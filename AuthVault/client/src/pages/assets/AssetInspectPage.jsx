@@ -1,13 +1,14 @@
 import {
 	Activity, ArrowLeft, CalendarDays, CheckCircle2, Clock3, Database, Download,
 	Eye, FileImage, Fingerprint, History, Image, Info, LockKeyhole, Maximize2,
-	ScanSearch, Share2, ShieldCheck, Sparkles, UserRound, WalletCards,
+	ScanSearch, Share2, ShieldCheck, Sparkles, Trash2, UserRound, WalletCards,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import BlockchainVisualization from '../../components/blockchain/BlockchainVisualization';
+import AssetConfirmModal from '../../components/assets/AssetConfirmModal';
 import AssetPreviewModal from '../../components/assets/AssetPreviewModal';
 import HolographicCardModal from '../../components/assets/HolographicCardModal';
 import AuthenticityGauge from '../../components/assets/dashboard/AuthenticityGauge';
@@ -62,6 +63,12 @@ export default function AssetInspectPage() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
 	const [toast, setToast] = useState('');
+	const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+	async function handleDeleteAsset() {
+		await assetService.deleteAsset(asset.id);
+		navigate('/assets', { replace: true });
+	}
 
 	const load = useCallback(async () => {
 		setLoading(true); setError('');
@@ -235,6 +242,9 @@ export default function AssetInspectPage() {
 					<Button icon={ScanSearch} onClick={() => navigate('/verification')}>
 						Run Verification
 					</Button>
+					<Button variant="ghost" icon={Trash2} onClick={() => setDeleteConfirmOpen(true)} style={{ color: '#ef4444' }}>
+						Delete
+					</Button>
 				</div>
 			</motion.div>
 
@@ -317,6 +327,16 @@ export default function AssetInspectPage() {
 
 			{/* Toast Notification */}
 			{toast && <Toast message={toast} onClose={() => setToast('')} />}
+
+			{/* Asset Confirm Delete Modal */}
+			<AssetConfirmModal
+				open={deleteConfirmOpen}
+				title={`Delete "${asset.title}"?`}
+				description="This asset and its cryptographic hashes will be permanently removed from your library and storage. This action cannot be undone."
+				confirmLabel="Delete Asset"
+				onClose={() => setDeleteConfirmOpen(false)}
+				onConfirm={handleDeleteAsset}
+			/>
 		</motion.div>
 	);
 }

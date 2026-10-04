@@ -143,4 +143,37 @@ public class AssetServiceImpl implements AssetService {
  return match(nearest,user,"perceptual",checked,similarity,best,similarity.equals("possible")?possible:strong,visual.phash().length()*4);}
  return map("match",false,"matchType",null,"checked",checked,"asset",null);
  }catch(ApiException e){throw e;}catch(Exception e){throw new ApiException(500,e.getMessage());}}
+ @Override @Transactional public Map<String,Object> delete(long user,String id,String token){
+  Asset a=owned(user,id);
+  access.assertAssetUnlocked(user,a.getId(),token);
+  Number txCount=(Number)manager.createNativeQuery(
+   "SELECT COUNT(*) FROM marketplace_transactions WHERE asset_id = :assetId"
+  ).setParameter("assetId",a.getId()).getSingleResult();
+  if(txCount!=null&&txCount.longValue()>0){
+   throw new ApiException(400,"Assets with settled marketplace transactions cannot be deleted");
+  }
+  manager.createNativeQuery("UPDATE documents SET asset_id = NULL WHERE asset_id = :assetId").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("UPDATE verification_reports SET asset_id = NULL WHERE asset_id = :assetId").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("DELETE FROM marketplace_previews WHERE listing_id IN (SELECT id FROM marketplace_listings WHERE asset_id = :assetId)").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("DELETE FROM marketplace_offers WHERE listing_id IN (SELECT id FROM marketplace_listings WHERE asset_id = :assetId)").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("DELETE FROM marketplace_options WHERE listing_id IN (SELECT id FROM marketplace_listings WHERE asset_id = :assetId)").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("DELETE FROM marketplace_messages WHERE listing_id IN (SELECT id FROM marketplace_listings WHERE asset_id = :assetId)").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("DELETE FROM organization_listings WHERE listing_id IN (SELECT id FROM marketplace_listings WHERE asset_id = :assetId)").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("DELETE FROM marketplace_listings WHERE asset_id = :assetId").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("DELETE FROM vault_assets WHERE asset_id = :assetId").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("DELETE FROM fractional_ownership WHERE asset_id = :assetId").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("DELETE FROM ownership_history WHERE asset_id = :assetId").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("DELETE FROM blockchain_blocks WHERE asset_id = :assetId").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("DELETE FROM asset_metadata WHERE asset_id = :assetId").setParameter("assetId",a.getId()).executeUpdate();
+  manager.createNativeQuery("DELETE FROM asset_hashes WHERE asset_id = :assetId").setParameter("assetId",a.getId()).executeUpdate();
+  assets.delete(a);
+  assets.flush();
+  if(a.getFileName()!=null){
+   remove(directory.resolve(Path.of(a.getFileName()).getFileName()));
+  }
+  if(a.getFilePath()!=null){
+   try{remove(Path.of(a.getFilePath()));}catch(Exception ignored){}
+  }
+  return map("success",true,"message","Asset deleted successfully","id",a.getId());
+ }
 }
