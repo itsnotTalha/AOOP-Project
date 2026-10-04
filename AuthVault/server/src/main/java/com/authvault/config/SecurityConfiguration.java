@@ -53,15 +53,7 @@ public class SecurityConfiguration {
                 default -> false;
             };
         };
-        http.cors(corsConfig -> corsConfig.configurationSource(request -> {
-                    org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
-                    config.addAllowedOriginPattern("*");
-                    config.addAllowedHeader("*");
-                    config.setAllowedMethods(java.util.List.of("GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"));
-                    config.setAllowCredentials(false);
-                    return config;
-                }))
-                .csrf(config -> config.disable())
+        http.csrf(config -> config.disable())
                 .formLogin(config -> config.disable()).httpBasic(config -> config.disable())
                 .logout(config -> config.disable()).requestCache(config -> config.disable())
                 .sessionManagement(config -> config.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

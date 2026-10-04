@@ -481,10 +481,13 @@ public class DocumentServiceImpl implements DocumentService {
         List<Path> candidates = List.of(
             Path.of("scripts/handwriting_ocr.py").toAbsolutePath(),
             Path.of("server/scripts/handwriting_ocr.py").toAbsolutePath(),
+            Path.of("AuthVault/server/scripts/handwriting_ocr.py").toAbsolutePath(),
             Path.of("VaultChain/server/scripts/handwriting_ocr.py").toAbsolutePath(),
             Path.of("src/main/resources/scripts/handwriting_ocr.py").toAbsolutePath(),
             Path.of("target/classes/scripts/handwriting_ocr.py").toAbsolutePath(),
+            Path.of("/home/potato/Project/AOOP-Project/AuthVault/server/scripts/handwriting_ocr.py"),
             Path.of("/home/potato/Project/AOOP-Project/VaultChain/server/scripts/handwriting_ocr.py"),
+            Path.of("/home/potato/Project/AOOP-Project/AuthVault/server/src/main/resources/scripts/handwriting_ocr.py"),
             Path.of("/home/potato/Project/AOOP-Project/VaultChain/server/src/main/resources/scripts/handwriting_ocr.py")
         );
         for (Path p : candidates) {

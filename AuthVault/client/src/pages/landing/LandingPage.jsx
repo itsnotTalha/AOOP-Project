@@ -1,7 +1,7 @@
 import {
-	ArrowRight, Braces, Check, ChevronRight, CircleCheck, Database, FileImage,
-	Code2, Fingerprint, Image, Layers3, Link2, LockKeyhole, Menu, ScanLine,
-	ShieldCheck, Sparkles, UploadCloud, X, Zap,
+	AlertTriangle, ArrowRight, Braces, Check, CheckCircle2, ChevronRight, CircleCheck, Database,
+	EyeOff, FileImage, Flame, Code2, Fingerprint, Image, Layers3, Link2, LockKeyhole,
+	Menu, ScanLine, ShieldAlert, ShieldCheck, Sparkles, TrendingDown, UploadCloud, X, XCircle, Zap,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -9,6 +9,95 @@ import { Link } from 'react-router-dom';
 import BrandLogo from '../../components/ui/BrandLogo';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { useAuth } from '../../context/AuthContext';
+
+const problemStats = [
+	{
+		value: '$54B+',
+		label: 'Annual IP & media piracy loss',
+		description: 'Massive revenue lost each year to untracked duplication, unauthorized reselling, and digital counterfeiting.',
+		tag: 'Industry Crisis',
+		tone: 'danger',
+		icon: TrendingDown,
+	},
+	{
+		value: '85%+',
+		label: 'Metadata stripped on upload',
+		description: 'EXIF camera data, creator credits, and copyright tags are wiped automatically by major CDNs and social platforms.',
+		tag: 'Provenance Lost',
+		tone: 'amber',
+		icon: EyeOff,
+	},
+	{
+		value: '3.2B+',
+		label: 'Unprotected files shared daily',
+		description: 'Images and documents uploaded across the web daily with zero cryptographic proof of origin or first publication.',
+		tag: 'Scale at Risk',
+		tone: 'violet',
+		icon: Database,
+	},
+	{
+		value: '92%',
+		label: 'AI watermark bypass rate',
+		description: 'Modern generative AI inpainting models remove visible watermarks and copyright stamps in seconds without trace.',
+		tag: 'Legacy Tools Defeated',
+		tone: 'cyan',
+		icon: Flame,
+	},
+];
+
+const legacyToolFlaws = [
+	{
+		title: 'Fragile EXIF & IPTC metadata',
+		flaw: 'Stripped on upload & easily spoofed',
+		desc: 'Stored as plaintext headers that are stripped by browsers, messaging apps, and social platforms. Anyone can falsify or wipe them with free command-line tools.',
+		icon: XCircle,
+	},
+	{
+		title: 'Superficial visible watermarks',
+		flaw: 'Erased by AI inpainting in seconds',
+		desc: 'Trivially bypassed by generative diffusion models, neural inpainting, and content-aware crop without degrading image quality or notifying creators.',
+		icon: XCircle,
+	},
+	{
+		title: 'Slow centralized registries',
+		flaw: 'Months of delay & costly audits',
+		desc: 'Traditional copyright databases take months to issue claims, charge steep per-filing fees, and provide no real-time cryptographic APIs for web apps.',
+		icon: XCircle,
+	},
+	{
+		title: 'Dumb bit-bucket cloud storage',
+		flaw: 'Zero duplicate awareness or proof',
+		desc: 'Standard cloud storage treats files as blind binary blobs. They offer no visual similarity checks, duplicate collision prevention, or tamper alerts.',
+		icon: XCircle,
+	},
+];
+
+const gameChangerAdvantages = [
+	{
+		title: 'Dual-layer cryptographic + perceptual hashing',
+		advantage: 'Deterministic SHA-256 + BlockHash',
+		desc: 'Computes exact 256-bit binary integrity alongside perceptual visual signatures, catching duplicate and re-encoded assets even after compression or resizing.',
+		icon: CheckCircle2,
+	},
+	{
+		title: 'Immutable verifiable provenance ledger',
+		advantage: 'Cryptographic proof of first ownership',
+		desc: 'Every file is anchored with an unalterable timestamp and creator signature, giving you permanent mathematical evidence of when your work was created.',
+		icon: CheckCircle2,
+	},
+	{
+		title: 'Zero-knowledge password-protected vaults',
+		advantage: 'Client-locked multi-sig security',
+		desc: 'Confidential master assets and documents are stored in client-passphrase protected vaults, shielded from unauthorized viewers and marketplace scrapers.',
+		icon: CheckCircle2,
+	},
+	{
+		title: 'Instant multi-layer forensic verification',
+		advantage: 'Milliseconds instead of months',
+		desc: 'Automated verification pipelines inspect image integrity, perceptual hash distance, and document OCR signatures in real time with downloadable audit receipts.',
+		icon: CheckCircle2,
+	},
+];
 
 const features = [
 	{ icon: Fingerprint, title: 'Cryptographic fingerprinting', text: 'Generate a unique SHA-256 integrity fingerprint for every uploaded image.', tone: 'cyan' },
@@ -41,7 +130,7 @@ function LandingNavbar() {
 			<div className="landing-container landing-nav__inner">
 				<Link to="/" className="landing-nav__brand" aria-label="AuthVault home"><BrandLogo /></Link>
 				<nav className={`landing-nav__links ${open ? 'is-open' : ''}`} aria-label="Landing page navigation">
-					<a href="#features" onClick={close}>Features</a><a href="#how-it-works" onClick={close}>How it works</a><a href="#security" onClick={close}>Security</a><a href="#about" onClick={close}>About</a>
+					<a href="#problem" onClick={close}>The Problem</a><a href="#features" onClick={close}>Features</a><a href="#how-it-works" onClick={close}>How it works</a><a href="#security" onClick={close}>Security</a><a href="#about" onClick={close}>About</a>
 					<div className="landing-nav__mobile-actions">{isAuthenticated ? <Link to="/dashboard" className="landing-button landing-button--primary" onClick={close}>Dashboard</Link> : <><Link to="/login" className="landing-button landing-button--secondary" onClick={close}>Sign in</Link><Link to="/register" className="landing-button landing-button--primary" onClick={close}>Get started</Link></>}</div>
 				</nav>
 				<div className="landing-nav__actions">{isAuthenticated ? <Link to="/dashboard" className="landing-button landing-button--primary">Dashboard <ArrowRight size={14} /></Link> : <><Link to="/login" className="landing-button landing-button--ghost">Sign in</Link><Link to="/register" className="landing-button landing-button--primary">Get started <ArrowRight size={14} /></Link></>}</div>
@@ -89,6 +178,79 @@ export default function LandingPage() {
 
 				<section className="trust-strip" aria-label="AuthVault technologies"><div className="landing-container trust-strip__inner">{[[Fingerprint,'SHA-256 Fingerprinting'],[ScanLine,'Perceptual Hashing'],[Database,'Metadata Intelligence'],[Layers3,'Duplicate Protection'],[LockKeyhole,'Secure Vaults','Vision']].map(([Icon,label,note])=><div key={label}><Icon size={16}/><span>{label}</span>{note?<small>{note}</small>:null}</div>)}</div></section>
 
+				<section id="problem" className="landing-section problem-section">
+					<div className="landing-glow landing-glow--problem" />
+					<div className="landing-container">
+						<div className="section-heading section-heading--center reveal">
+							<span className="problem-badge"><AlertTriangle size={13} /> The Provenance Crisis</span>
+							<h2>Digital ownership is broken.<br />The statistics prove it.</h2>
+							<p>Billions of creative assets circulate online without verifiable provenance. Conventional safeguards were engineered for the pre-AI web—and they are failing creators every day.</p>
+						</div>
+
+						<div className="problem-stats-grid">
+							{problemStats.map(({ value, label, description, tag, tone, icon: Icon }, i) => (
+								<article className={`problem-stat-card problem-stat-card--${tone} reveal`} key={label} style={{ '--delay': `${i * 0.05}s` }}>
+									<div className="problem-stat-card__top">
+										<span className="problem-stat-card__tag">{tag}</span>
+										<span className="problem-stat-card__icon"><Icon size={16} /></span>
+									</div>
+									<strong className="problem-stat-card__value">{value}</strong>
+									<h3 className="problem-stat-card__label">{label}</h3>
+									<p className="problem-stat-card__desc">{description}</p>
+								</article>
+							))}
+						</div>
+
+						<div className="comparison-wrapper reveal">
+							<div className="comparison-grid">
+								<div className="comparison-column comparison-column--legacy">
+									<div className="comparison-column__header">
+										<StatusBadge tone="danger"><XCircle size={12} /> Legacy Safeguards Failing</StatusBadge>
+										<h3>Why existing tools can't protect you</h3>
+										<p>Built for an outdated web, conventional copyright methods offer an illusion of safety that collapses under modern scrutiny.</p>
+									</div>
+									<div className="comparison-list">
+										{legacyToolFlaws.map(({ title, flaw, desc, icon: Icon }) => (
+											<div className="comparison-item comparison-item--legacy" key={title}>
+												<div className="comparison-item__icon"><Icon size={16} /></div>
+												<div className="comparison-item__content">
+													<div className="comparison-item__title-row">
+														<h4>{title}</h4>
+														<span className="comparison-tag comparison-tag--danger">{flaw}</span>
+													</div>
+													<p>{desc}</p>
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+
+								<div className="comparison-column comparison-column--gamechanger">
+									<div className="comparison-column__header">
+										<StatusBadge tone="success"><Sparkles size={12} /> AuthVault: The Game Changer</StatusBadge>
+										<h3>Cryptographic provenance that never fades</h3>
+										<p>We combine deterministic hashing, perceptual computer vision, and verifiable ledgers to forge undeniable digital custody.</p>
+									</div>
+									<div className="comparison-list">
+										{gameChangerAdvantages.map(({ title, advantage, desc, icon: Icon }) => (
+											<div className="comparison-item comparison-item--gamechanger" key={title}>
+												<div className="comparison-item__icon"><Icon size={16} /></div>
+												<div className="comparison-item__content">
+													<div className="comparison-item__title-row">
+														<h4>{title}</h4>
+														<span className="comparison-tag comparison-tag--success">{advantage}</span>
+													</div>
+													<p>{desc}</p>
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</section>
+
 				<section id="features" className="landing-section features-section"><div className="landing-container"><div className="section-heading reveal"><span>Core platform</span><h2>Trust, built into every asset.</h2><p>A focused toolkit for understanding what your files are, where they came from, and whether they have appeared before.</p></div><div className="feature-grid">{features.map(({ icon:Icon,title,text,tone,soon },i)=><article className={`feature-card feature-card--${tone} reveal`} key={title} style={{'--delay':`${i*.04}s`}}><div className="feature-card__icon"><Icon size={21}/></div><div>{soon?<StatusBadge tone="warning">In development</StatusBadge>:<span className="feature-card__live"><i/> Available now</span>}<h3>{title}</h3><p>{text}</p></div><ChevronRight className="feature-card__arrow" size={17}/></article>)}</div></div></section>
 
 				<section id="how-it-works" className="landing-section workflow-section"><div className="landing-container"><div className="section-heading section-heading--center reveal"><span>How it works</span><h2>From upload to protected identity.</h2><p>Four focused steps transform an image into an inspectable digital record.</p></div><div className="workflow-grid">{steps.map(({n,icon:Icon,title,text})=><article className="workflow-step reveal" key={n}><div className="workflow-step__icon"><Icon size={21}/><span>{n}</span></div><h3>{title}</h3><p>{text}</p></article>)}</div></div></section>
@@ -99,7 +261,7 @@ export default function LandingPage() {
 
 				<section id="about" className="landing-cta-section"><div className="landing-container"><div className="landing-cta reveal"><div className="landing-cta__glow"/><span><Zap size={14}/> Start building your secure collection</span><h2>Give your digital assets<br/>a verifiable identity.</h2><p>Create your workspace and fingerprint your first image in minutes.</p><div><Link to="/register" className="landing-button landing-button--primary landing-button--lg">Create free account <ArrowRight size={16}/></Link><Link to="/login" className="landing-button landing-button--secondary landing-button--lg">Sign in</Link></div></div></div></section>
 			</main>
-			<footer className="landing-footer"><div className="landing-container"><div className="landing-footer__top"><div><BrandLogo/><p>Built for secure digital ownership.</p></div><div className="landing-footer__links"><div><strong>Product</strong><a href="#features">Features</a><a href="#security">Security</a><a href="#how-it-works">How it works</a></div><div><strong>Platform</strong><Link to="/dashboard">Dashboard</Link><Link to="/assets">Assets</Link><Link to="/login">Sign in</Link></div><div><strong>Project</strong><a href="https://github.com/itsnotTalha/SE-Lab-Project" target="_blank" rel="noreferrer"><Code2 size={13}/> GitHub</a></div></div></div><div className="landing-footer__bottom"><span>© {new Date().getFullYear()} AuthVault</span><span><Link2 size={12}/> Authenticity starts with evidence.</span></div></div></footer>
+			<footer className="landing-footer"><div className="landing-container"><div className="landing-footer__top"><div><BrandLogo/><p>Built for secure digital ownership.</p></div><div className="landing-footer__links"><div><strong>Product</strong><a href="#problem">The Problem</a><a href="#features">Features</a><a href="#security">Security</a><a href="#how-it-works">How it works</a></div><div><strong>Platform</strong><Link to="/dashboard">Dashboard</Link><Link to="/assets">Assets</Link><Link to="/login">Sign in</Link></div><div><strong>Project</strong><a href="https://github.com/itsnotTalha/SE-Lab-Project" target="_blank" rel="noreferrer"><Code2 size={13}/> GitHub</a></div></div></div><div className="landing-footer__bottom"><span>© {new Date().getFullYear()} AuthVault</span><span><Link2 size={12}/> Authenticity starts with evidence.</span></div></div></footer>
 		</div>
 	);
 }
