@@ -34,6 +34,7 @@ public class SecurityConfiguration {
             String path = request.getRequestURI().substring(request.getContextPath().length());
             if (path.endsWith("/")) path = path.substring(0, path.length() - 1);
             String method = request.getMethod();
+            if (path.equals("/api/auth/recovery") || path.equals("/api/organizations") || path.startsWith("/api/organizations/")) return true;
             if (path.equals("/api/admin") || path.startsWith("/api/admin/")) return true;
             if (path.equals("/api/documents") || path.startsWith("/api/documents/")) return true;
             if (path.equals("/api/wallet") || path.startsWith("/api/wallet/")) return true;

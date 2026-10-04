@@ -143,7 +143,9 @@ def preprocess_image(image_path):
     pil_img = Image.open(image_path).convert('L')
     arr = np.array(pil_img)
     t = otsu_threshold(arr)
-    binary = (arr < t).astype(np.uint8)
+    binary = (arr <= t).astype(np.uint8)
+    if np.sum(binary) == 0:
+        binary = (arr < 128).astype(np.uint8)
     
     # Suppress notebook ruling lines (long horizontal lines)
     if binary.shape[1] >= 60:

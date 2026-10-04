@@ -5,6 +5,7 @@
 /home/potato/Project/AOOP-Project/AuthVault/server/src/test/java/com/authvault/AuthApiTest.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/test/java/com/authvault/AuthCompatibilityTest.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/test/java/com/authvault/BlockHashTest.java
+/home/potato/Project/AOOP-Project/AuthVault/server/src/test/java/com/authvault/ClientIntegrationTest.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/test/java/com/authvault/CoreWorkflowTest.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/test/java/com/authvault/DocumentApiTest.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/test/java/com/authvault/MarketplaceApiTest.java

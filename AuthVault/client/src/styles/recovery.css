@@ -1,0 +1,13 @@
+:where(html[data-workspace]) .recovery-settings { margin-top: 17px; }
+:where(html[data-workspace]) .recovery-settings__grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 28px; align-items: start; }
+:where(html[data-workspace]) .recovery-explanation { padding: 20px; background: var(--primary-soft); border: 1px solid var(--border); border-radius: 14px; }
+:where(html[data-workspace]) .recovery-explanation > svg, :where(html[data-workspace]) .recovery-code-card > svg { color: var(--primary); }
+:where(html[data-workspace]) .recovery-explanation h3, :where(html[data-workspace]) .recovery-code-card h3 { margin: 12px 0; }
+:where(html[data-workspace]) .recovery-explanation p, :where(html[data-workspace]) .recovery-code-card p { color: var(--text-secondary); line-height: 1.6; }
+:where(html[data-workspace]) .recovery-code-card { display: grid; gap: 16px; justify-items: start; }
+:where(html[data-workspace]) .recovery-code-card code { max-width: 100%; overflow-wrap: anywhere; padding: 18px; border: 1px solid var(--border); border-radius: 10px; color: var(--text); background: var(--bg-subtle); font-size: 1rem; user-select: all; }
+:where(html[data-workspace]) .recovery-acknowledgement { display: flex; align-items: center; gap: 10px; line-height: 1.5; color: var(--text-secondary); }
+:where(html[data-workspace]) .recovery-acknowledgement input { width: 18px; height: 18px; accent-color: var(--primary); flex-shrink: 0; }
+:where(html[data-workspace]) .recovery-settings .button { justify-self: start; }
+:where(html[data-workspace]) .auth-card[data-mode='recovery'] { margin-block: 24px; }
+@media (max-width: 850px) { :where(html[data-workspace]) .recovery-settings__grid { grid-template-columns: 1fr; } }

@@ -22,6 +22,7 @@ public class JwtService {
     private final String secret;
     private final String expiry;
     private final Clock clock;
+    @org.springframework.beans.factory.annotation.Autowired private com.authvault.service.AccountExtras extras;
 
     public JwtService(@Value("${authvault.jwt-secret:${vaultchain.jwt-secret:${JWT_SECRET:authvault-development-secret}}}") String secret,
                       @Value("${authvault.jwt-expires-in:${vaultchain.jwt-expires-in:${JWT_EXPIRES_IN:7d}}}") String expiry, Clock clock) {
@@ -34,7 +35,7 @@ public class JwtService {
         long now = clock.instant().getEpochSecond();
         return JWT.create().withClaim("id", user.id()).withClaim("email", user.email())
                 .withClaim("role", user.role()).withClaim("status", user.status())
-                .withJWTId(UUID.randomUUID().toString()).withIssuedAt(Instant.ofEpochSecond(now))
+                .withClaim("sessionVersion", extras == null ? 0 : extras.version(user.id())).withJWTId(UUID.randomUUID().toString()).withIssuedAt(Instant.ofEpochSecond(now))
                 .withExpiresAt(Instant.ofEpochSecond(JwtExpiry.expiresAt(now, expiry)))
                 .sign(Algorithm.HMAC256(secret));
     }

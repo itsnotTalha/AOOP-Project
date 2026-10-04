@@ -40,7 +40,7 @@ class ApplicationTest {
     @Test
     void startupInitializesTemporaryDatabaseAndProvidesJdbcTemplates() throws Exception {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'", Integer.class))
-                .isEqualTo(23);
+                .isEqualTo(31);
         assertThat(namedJdbc.queryForObject("SELECT setting_value FROM platform_settings WHERE setting_key=:key",
                 Map.of("key", "marketplace_commission_rate"), String.class)).isEqualTo("0.05");
         try (var connection = source.getConnection()) {

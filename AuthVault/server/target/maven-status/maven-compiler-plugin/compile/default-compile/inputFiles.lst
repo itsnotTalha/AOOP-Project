@@ -10,6 +10,7 @@
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/controller/DocumentController.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/controller/HealthController.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/controller/MarketplaceController.java
+/home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/controller/OrganizationController.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/controller/VaultController.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/controller/VerificationController.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/controller/WalletController.java
@@ -83,6 +84,7 @@
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/security/SecurityErrors.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/security/TokenAuthentication.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/security/package-info.java
+/home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/service/AccountExtras.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/service/AdminService.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/service/AssetService.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/service/AuthService.java
@@ -90,6 +92,7 @@
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/service/DashboardService.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/service/DocumentService.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/service/MarketplaceService.java
+/home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/service/OrganizationService.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/service/VaultAccessService.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/service/VaultService.java
 /home/potato/Project/AOOP-Project/AuthVault/server/src/main/java/com/authvault/service/VaultSessionRevoker.java

@@ -64,7 +64,7 @@ class AuthApiTest {
     @Test void registrationLoginProfileAndMeMatchLegacyShapes() throws Exception {
         var account = register(); var user = account.path("user"); long id = user.path("id").asLong();
         assertThat(account.path("message").asText()).isEqualTo("User registered successfully");
-        assertThat(user.fieldNames()).toIterable().containsExactlyInAnyOrder("id", "fullName", "email", "role", "status", "createdAt", "updatedAt");
+        assertThat(user.fieldNames()).toIterable().containsExactlyInAnyOrder("id", "fullName", "email", "role", "status", "createdAt", "updatedAt", "username");
         assertThat(user.path("role").asText()).isEqualTo("USER");
         assertThat(user.path("createdAt").asText()).isNotBlank();
         assertThat(user.path("updatedAt").asText()).isNotBlank();
@@ -78,7 +78,7 @@ class AuthApiTest {
         assertThat(claims.getId()).isNotBlank();
         var me = request("GET", "/me/", null, bearer(account));
         assertThat(me.status).isEqualTo(200);
-        assertThat(me.body.path("user").fieldNames()).toIterable().containsExactlyInAnyOrder("id", "full_name", "email", "role", "status", "created_at");
+        assertThat(me.body.path("user").fieldNames()).toIterable().containsExactlyInAnyOrder("id", "full_name", "email", "role", "status", "created_at", "username");
         String email = UUID.randomUUID() + "@updated.test";
         var profile = request("PATCH", "/profile", Map.of("full_name", " Updated ", "email", email.toUpperCase(Locale.ROOT)), bearer(account));
         assertThat(profile.status).isEqualTo(200);

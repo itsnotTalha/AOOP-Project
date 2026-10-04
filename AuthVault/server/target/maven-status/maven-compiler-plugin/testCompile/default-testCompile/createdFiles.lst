@@ -3,6 +3,7 @@ com/authvault/BlockHashTest.class
 com/authvault/DocumentApiTest.class
 com/authvault/AuthApiTest.class
 com/authvault/MarketplaceApiTest.class
+com/authvault/ClientIntegrationTest.class
 com/authvault/WalletApiTest.class
 com/authvault/repository/SchemaInitializerTest.class
 com/authvault/exception/ApiExceptionHandlerTest.class

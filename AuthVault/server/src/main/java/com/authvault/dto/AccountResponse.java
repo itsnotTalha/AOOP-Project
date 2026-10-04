@@ -7,16 +7,16 @@ public final class AccountResponse {
     private AccountResponse() {}
 
     public record User(long id, String fullName, String email, String role, String status,
-                       String createdAt, String updatedAt) {
-        public static User from(UserRecord user) {
-            return new User(user.id(), user.fullName(), user.email(), user.role(), user.status(), user.createdAt(), user.updatedAt());
+                       String createdAt, String updatedAt, String username) {
+        public static User from(UserRecord user, String username) {
+            return new User(user.id(), user.fullName(), user.email(), user.role(), user.status(), user.createdAt(), user.updatedAt(), username);
         }
     }
 
     public record MeUser(long id, @JsonProperty("full_name") String fullName, String email,
-                         String role, String status, @JsonProperty("created_at") String createdAt) {
-        public static MeUser from(UserRecord user) {
-            return new MeUser(user.id(), user.fullName(), user.email(), user.role(), user.status(), user.createdAt());
+                         String role, String status, @JsonProperty("created_at") String createdAt, String username) {
+        public static MeUser from(UserRecord user, String username) {
+            return new MeUser(user.id(), user.fullName(), user.email(), user.role(), user.status(), user.createdAt(), username);
         }
     }
 

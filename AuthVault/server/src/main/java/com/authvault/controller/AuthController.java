@@ -8,6 +8,8 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import com.authvault.service.AccountExtras;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,11 +21,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService accounts;
+    private final AccountExtras extras;
     private final VaultSessionRevoker sessions;
-    public AuthController(AuthService accounts, VaultSessionRevoker sessions) {
+    public AuthController(AuthService accounts, VaultSessionRevoker sessions, AccountExtras extras) {
         this.accounts = accounts;
+        this.extras = extras;
         this.sessions = sessions;
     }
+
+    @GetMapping("/recovery/questions") public Map<String,Object> questions(){return Map.of("questions",AccountExtras.QUESTIONS);}
+    @GetMapping("/recovery") public Map<String,Object> recovery(@AuthenticationPrincipal CurrentUser user){return extras.settings(user.id());}
+    @PutMapping("/recovery") public Map<String,Object> recoverySave(@AuthenticationPrincipal CurrentUser user,@RequestBody Map<String,Object> body){return extras.save(user.id(),body);}
+    @PostMapping("/forgot-password") public Map<String,Object> reset(@RequestBody Map<String,Object> body){return extras.reset(body);}
 
     @PostMapping({"/register", "/register/"})
     @ResponseStatus(HttpStatus.CREATED)

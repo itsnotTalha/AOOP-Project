@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 public class TokenAuthentication {
     private final JwtService tokens;
     private final AuthRepository users;
+    @org.springframework.beans.factory.annotation.Autowired private com.authvault.service.AccountExtras extras;
 
     public TokenAuthentication(JwtService tokens, AuthRepository users) {
         this.tokens = tokens;
@@ -29,6 +30,8 @@ public class TokenAuthentication {
             id = null;
         }
         var user = users.findById(id).orElseThrow(() -> new ApiException(401, "Account no longer exists"));
+        Integer version = decoded.getClaim("sessionVersion").asInt();
+        if ((version == null ? 0 : version) != extras.version(user.id())) throw new ApiException(401, "Session expired. Sign in again");
         if ("suspended".equals(user.status())) throw new ApiException(403, "This account has been suspended");
         return new CurrentUser(user.id(), user.email(), user.role(), user.status(), JwtService.fingerprint(token));
     }

@@ -23,11 +23,11 @@ async function request(path, options) {
 	return data;
 }
 
-async function login({ email, password }) {
+async function login({ identifier, email, username, password }) {
 	const data = await request('/auth/login', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ email, password }),
+		body: JSON.stringify({ identifier: identifier ?? email ?? username, password }),
 	});
 
 	setToken(data.token);
@@ -52,6 +52,7 @@ async function getCurrentUser() {
 
 	return {
 		id: data.user.id,
+		username: data.user.username,
 		fullName: data.user.fullName || data.user.full_name,
 		email: data.user.email,
 		role: data.user.role,
@@ -60,11 +61,11 @@ async function getCurrentUser() {
 	};
 }
 
-async function updateProfile({ fullName, email }) {
+async function updateProfile({ fullName, username }) {
 	const data = await request('/auth/profile', {
 		method: 'PATCH',
 		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-		body: JSON.stringify({ fullName, email }),
+		body: JSON.stringify({ fullName, username }),
 	});
 
 	return data.user;
@@ -102,7 +103,23 @@ function getCurrentUserId() {
 	}
 }
 
+async function getRecoverySettings() {
+ return request('/auth/recovery', { headers: { Authorization: `Bearer ${getToken()}` } });
+}
+async function getRecoveryQuestions() {
+ return request('/auth/recovery/questions');
+}
+async function saveRecoverySettings(payload) {
+ return request('/auth/recovery', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify(payload) });
+}
+async function resetPassword(payload) {
+ return request('/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+}
 export const authService = {
+ getRecoverySettings,
+ getRecoveryQuestions,
+ saveRecoverySettings,
+ resetPassword,
 	login,
 	register,
 	logout,

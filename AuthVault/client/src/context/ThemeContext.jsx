@@ -10,6 +10,8 @@ function getInitialTheme() {
 
 export function ThemeProvider({ children }) {
 	const [theme, setTheme] = useState(getInitialTheme);
+ const [motionEnabled, setMotionEnabled] = useState(() => localStorage.getItem('authvault-motion') !== 'off');
+ useEffect(() => { document.documentElement.dataset.motion = motionEnabled ? 'on' : 'off'; localStorage.setItem('authvault-motion', motionEnabled ? 'on' : 'off'); }, [motionEnabled]);
 
 	useEffect(() => {
 		document.documentElement.dataset.theme = theme;
@@ -19,9 +21,10 @@ export function ThemeProvider({ children }) {
 
 	const value = useMemo(() => ({
 		theme,
+        motionEnabled, toggleMotion: () => setMotionEnabled(value => !value),
 		setTheme,
 		toggleTheme: () => setTheme((current) => current === 'dark' ? 'light' : 'dark'),
-	}), [theme]);
+	}), [theme, motionEnabled]);
 
 	return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

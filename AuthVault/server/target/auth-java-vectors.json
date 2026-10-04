@@ -1,30 +1,30 @@
 {
   "passwords" : [ {
     "password" : "LegacyPass123!",
-    "hash" : "$2b$10$Yf1Hn1YajXvmqefDDnRlbe0/PniKxUh9LGU/L8WGpaX4HWIMs1eey"
+    "hash" : "$2b$10$E3ShhFcGRO6FtPoVvfqdV.8Zsb6sjgnT8mPxnzN96KRSjqipVzHoa"
   }, {
     "password" : "পাসওয়ার্ড\uD83D\uDD12123",
-    "hash" : "$2b$10$OjHSNVd.GMWYw7TjNSnNieImqjSpeuQ1cPthgKgqD9L9gxXBSx5De"
+    "hash" : "$2b$10$z.DJ2c17YR228CcIo5AJROt.RIzHIlgm845tP9i7do4P0ziIH9slK"
   }, {
     "password" : "ééééééééééééééééééééééééééééééééééé\uD83D\uDD12suffix",
-    "hash" : "$2b$10$CLiV1pZHjpgOiJ1u.inO0uNQuH5IxwNIdhX0vmySTRgQcv9KK33JW"
+    "hash" : "$2b$10$RdMrSYcIcU3iJFR2Nxrbzuiy5PC7KbO/kH5JZc9Id.DPFKKbGHTNO"
   }, {
     "password" : "before\u0000after123",
-    "hash" : "$2b$10$xaHCArKzlnW6HSWeSPzUgueB56b4trgj8rxrQIlDwnGfL2bBkT4Me"
+    "hash" : "$2b$10$i9USUQTSztSG5Doo4jPH/eGwdykKx8hHVzZR3aoMBLhxbCfPpPd3G"
   }, {
     "password" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "hash" : "$2b$10$WZcBk1vw0wjfzuvg6G79reKZOij5HqIyADGaMrrRZhqRiXrjr320i"
+    "hash" : "$2b$10$QvK.amAUu0aNRlCUT6ETluMf6RQ6EWR9Ov2yncAIbjsHrd97xYJGu"
   }, {
     "password" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "hash" : "$2b$10$DcWjbBWVqprhHlY3nKSup./4osQZMfCB4uE1wRsl2abqaRdrfvFQy"
+    "hash" : "$2b$10$W/agnpya10P2Q2z7c/FBsu5li7.LX.SwBDpNaJLNb/wsM9Fcn7VZG"
   }, {
     "password" : "\uD800Pass123!",
-    "hash" : "$2b$10$9.ehLCgb1WFDXVH4T3lAzeeDhONYHJ5XjXLTXIyO0zrf3/P9o7OfK"
+    "hash" : "$2b$10$vkwHIwd/2x2/ogo.9K6WmusdtXB9lzNlRN7c20tNe2iYWuTEpkDnK"
   }, {
     "password" : "LegacyPass123!",
-    "hash" : "$2b$10$/IB9qMlhYPDJBnLQgzhrs.t7Sfzt3tH1Rfz.YT9n/pBG1sShFckwi"
+    "hash" : "$2b$10$.uHnxjLhxgdO07phELBZ.uf9nLSNhPfCSujWI80hMTHLC8SStK3fC"
   } ],
   "secret" : "vaultchain-auth-compatibility-fixture-secret",
   "issuedAt" : 1790000000,
-  "token" : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTAwMSwiZW1haWwiOiJqYXZhQGV4YW1wbGUudGVzdCIsInJvbGUiOiJVU0VSIiwic3RhdHVzIjoiYWN0aXZlIiwianRpIjoiNTE0ODM4MTUtZGE1OS00ZmE1LWE5ZWItYWQyYTQ4MTYzMzMxIiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTA2MDQ4MDB9.8KwrOIRi3T-18KsDoS0bnLu7NXL2xhAOEDGDvc4zMSE"
+  "token" : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTAwMSwiZW1haWwiOiJqYXZhQGV4YW1wbGUudGVzdCIsInJvbGUiOiJVU0VSIiwic3RhdHVzIjoiYWN0aXZlIiwic2Vzc2lvblZlcnNpb24iOjAsImp0aSI6ImY0ZWViYTQ1LTU1ODgtNGYwYS1hZjIzLTYyNmY2NTYzZjBhOSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwNjA0ODAwfQ.GCs70Xq7Ybqq4nyjLAP5Vlge2bIiMiv7xLjnz0Jxi8Q"
 }

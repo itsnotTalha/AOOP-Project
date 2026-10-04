@@ -53,6 +53,7 @@ import jakarta.persistence.EntityManager;
 
 @Service
 public class DocumentServiceImpl implements DocumentService {
+    @org.springframework.beans.factory.annotation.Autowired private org.springframework.jdbc.core.JdbcTemplate db;
     private static final DateTimeFormatter SQLITE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final DocumentJpaRepository documents;
     private final OcrResultJpaRepository ocrResults;
@@ -217,12 +218,43 @@ public class DocumentServiceImpl implements DocumentService {
         return hashes;
     }
 
+    private String metadataHash(Document d,String name,String description){
+        try{return sha(json.writeValueAsBytes(List.of(name,description,d.getMimeType(),d.getFileSize())));}catch(Exception e){throw new IllegalStateException(e);}
+    }
+    public Map<String,Object> registerMetadata(long userId,String id,String name,String description){
+        Document d=owned(userId,id);name=name==null||name.isBlank()?d.getOriginalName():name.trim();description=description==null?"":description.trim();
+        if(name.length()>255||description.length()>2000)throw new ApiException(400,"Document name or description is too long");
+        db.update("INSERT INTO document_metadata(document_id,name,description,metadata_hash) VALUES(?,?,?,?) ON CONFLICT(document_id) DO NOTHING",d.getId(),name,description,metadataHash(d,name,description));
+        return publicDocument(d,true);
+    }
+    private Map<String,Object> integrity(Document d){
+        Map<String,Object> result=new LinkedHashMap<>();
+        try{result.put("fileMatch",sha(Files.readAllBytes(path(d))).equals(d.getSha256Hash()));}catch(Exception e){result.put("fileMatch",false);}
+        var rows=db.queryForList("SELECT * FROM document_metadata WHERE document_id=?",d.getId());
+        result.put("metadataMatch",rows.isEmpty()?null:metadataHash(d,(String)rows.getFirst().get("name"),(String)rows.getFirst().get("description")).equals(rows.getFirst().get("metadata_hash")));
+        return result;
+    }
+    private Map<String,Object> identity(Document d){
+        return Map.of("id",d.getId(),"originalName",d.getOriginalName(),"sha256",d.getSha256Hash());
+    }
+    @Transactional
+    public Map<String,Object> verifyIntegrity(long user,String id){
+        Document d=owned(user,id);var evidence=new LinkedHashMap<String,Object>();var check=integrity(d);
+        evidence.put("classification",Boolean.TRUE.equals(check.get("fileMatch"))?"File integrity verified":"File changed or missing");
+        evidence.put("sha256Match",check.get("fileMatch"));evidence.put("metadataMatch",check.get("metadataMatch"));evidence.put("textMatch",null);evidence.put("similarityScore",null);evidence.put("sourceIntegrity",check);
+        var report=new LinkedHashMap<String,Object>();report.put("sourceDocument",identity(d));report.put("evidence",evidence);report.put("verifiedAt",java.time.Instant.now().toString());
+        DocumentVerification v=new DocumentVerification();v.setUserId(user);v.setDocumentId(d.getId());v.setReferenceDocumentId(d.getId());v.setStatus(Boolean.TRUE.equals(check.get("fileMatch"))?"original":"modified");
+        try{v.setReportJson(json.writeValueAsString(report));}catch(Exception e){throw new IllegalStateException(e);}v=verifications.saveAndFlush(v);entityManager.refresh(v);return verification(v);
+    }
+
     private Map<String, Object> publicDocument(Document d, boolean detailed) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("id", d.getId());
         out.put("assetId", d.getAssetId());
         out.put("reference", "DOC-" + String.format("%06d", d.getId()));
         out.put("originalName", d.getOriginalName());
+        var savedMetadata=db.queryForList("SELECT name,description,metadata_hash FROM document_metadata WHERE document_id=?",d.getId());
+        if(!savedMetadata.isEmpty()){out.put("name",savedMetadata.getFirst().get("name"));out.put("description",savedMetadata.getFirst().get("description"));out.put("metadataSha256",savedMetadata.getFirst().get("metadata_hash"));}
         out.put("mimeType", d.getMimeType());
         out.put("fileSize", d.getFileSize());
         out.put("sha256", d.getSha256Hash());
@@ -236,6 +268,7 @@ public class DocumentServiceImpl implements DocumentService {
 
         OcrResult r = result(d);
         String text = r != null && r.getExtractedText() != null ? r.getExtractedText() : "";
+        out.put("textSha256", r == null ? null : r.getSemanticHash());
         out.put("hashes", extractHashes(d, r));
         out.put("metadata", extractMetadata(d, text));
 
@@ -747,6 +780,11 @@ public class DocumentServiceImpl implements DocumentService {
             report.put("referenceOcrStatus", reference.getOcrStatus());
         }
 
+        Map<String,Object> evidence=new LinkedHashMap<>();
+        evidence.put("classification",sha?"Exact file match":Boolean.TRUE.equals(semantic)?"Matching text, different files":ready?"Different documents":"Text comparison unavailable");
+        evidence.put("sha256Match",sha);evidence.put("metadataMatch",null);evidence.put("textMatch",semantic);evidence.put("similarityScore",similarity);evidence.put("sourceIntegrity",integrity(target));
+        if(ready){var added=new HashSet<>(ta);added.removeAll(tb);var removed=new HashSet<>(tb);removed.removeAll(ta);evidence.put("differences",Map.of("addedWords",added.stream().sorted().toList(),"removedWords",removed.stream().sorted().toList()));}
+        report.put("evidence",evidence);report.put("sourceDocument",identity(target));report.put("targetDocument",identity(reference));report.put("verifiedAt",java.time.Instant.now().toString());
         DocumentVerification v = new DocumentVerification();
         v.setUserId(userId);
         v.setDocumentId(targetId);

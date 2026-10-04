@@ -19,11 +19,13 @@ public class AuthService {
     private final AuthRepository users;
     private final LegacyPasswordEncoder passwords;
     private final JwtService tokens;
+    private final AccountExtras extras;
 
-    public AuthService(AuthRepository users, LegacyPasswordEncoder passwords, JwtService tokens) {
+    public AuthService(AuthRepository users, LegacyPasswordEncoder passwords, JwtService tokens, AccountExtras extras) {
         this.users = users;
         this.passwords = passwords;
         this.tokens = tokens;
+        this.extras = extras;
     }
 
     public AccountResponse.SignedIn register(Map<String, Object> input) {
@@ -44,6 +46,7 @@ public class AuthService {
     public AccountResponse.SignedIn login(Map<String, Object> input) {
         Map<String, Object> body = input == null ? Map.of() : input;
         String email = email(body);
+        if(email.isEmpty()){ Long id=extras.resolve(LegacyValues.text(body.get("identifier"))); if(id!=null)email=user(id).email(); }
         String password = LegacyValues.text(body.get("password"));
         require(!email.isEmpty(), "Email is required");
         require(!password.isEmpty(), "Password is required");
@@ -53,13 +56,15 @@ public class AuthService {
         return signedIn(user, "Login successful");
     }
 
-    public AccountResponse.MeUser me(long id) { return AccountResponse.MeUser.from(user(id)); }
+    public AccountResponse.MeUser me(long id) { return AccountResponse.MeUser.from(user(id), extras.username(id)); }
 
+    @org.springframework.transaction.annotation.Transactional
     public AccountResponse.User updateProfile(long id, Map<String, Object> input) {
         user(id);
         Map<String, Object> body = input == null ? Map.of() : input;
         String name = name(body);
-        String email = email(body);
+        String email = body.containsKey("username") && !body.containsKey("email") ? user(id).email() : email(body);
+        if(body.containsKey("username")) extras.setUsername(id, LegacyValues.text(body.get("username")));
         require(!name.isEmpty(), "Full name is required");
         require(name.length() <= 100, "Full name must be 100 characters or fewer");
         require(!email.isEmpty(), "Email is required");
@@ -67,7 +72,7 @@ public class AuthService {
         users.findByEmail(email).filter(owner -> owner.id() != id).ifPresent(owner -> {
             throw new ApiException(409, "Email is already registered");
         });
-        return AccountResponse.User.from(users.updateProfile(id, name, email));
+        return AccountResponse.User.from(users.updateProfile(id, name, email), extras.username(id));
     }
 
     public void changePassword(long id, Map<String, Object> input) {
@@ -92,7 +97,7 @@ public class AuthService {
     }
 
     private AccountResponse.SignedIn signedIn(UserRecord user, String message) {
-        return new AccountResponse.SignedIn(true, message, tokens.sign(user), AccountResponse.User.from(user));
+        return new AccountResponse.SignedIn(true, message, tokens.sign(user), AccountResponse.User.from(user, extras.username(user.id())));
     }
 
     private String name(Map<String, Object> body) {

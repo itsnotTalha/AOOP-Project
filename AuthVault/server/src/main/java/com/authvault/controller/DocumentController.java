@@ -14,14 +14,18 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/documents")
 public class DocumentController {
     private final DocumentService service;
+    @org.springframework.beans.factory.annotation.Autowired private com.authvault.service.impl.DocumentServiceImpl extended;
     public DocumentController(DocumentService service) { this.service = service; }
 
     @PostMapping({"", "/"})
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String,Object> upload(@AuthenticationPrincipal CurrentUser user,
             @RequestPart(value="file",required=false) MultipartFile file,
-            @RequestParam(value="ocrMode",required=false,defaultValue="printed") String mode) {
-        return Map.of("success",true,"message","Document uploaded successfully","document",service.upload(user.id(),file,mode));
+            @RequestParam(value="ocrMode",required=false,defaultValue="printed") String mode,
+            @RequestParam(required=false) String name,@RequestParam(required=false) String description) {
+        if(name!=null&&name.length()>255||description!=null&&description.length()>2000)throw new com.authvault.exception.ApiException(400,"Document name or description is too long");
+        var doc=service.upload(user.id(),file,mode);
+        return Map.of("success",true,"message","Document uploaded successfully","document",extended.registerMetadata(user.id(),String.valueOf(doc.get("id")),name,description));
     }
     @GetMapping({"", "/"})
     public Map<String,Object> list(@AuthenticationPrincipal CurrentUser user,
@@ -51,6 +55,7 @@ public class DocumentController {
     public ResponseEntity<byte[]> preview(@AuthenticationPrincipal CurrentUser user,@PathVariable String id) {
         return service.content(user.id(),id,true);
     }
+    @PostMapping("/{id}/integrity") public Map<String,Object> integrity(@AuthenticationPrincipal CurrentUser user,@PathVariable String id){return Map.of("verification",extended.verifyIntegrity(user.id(),id));}
     @PostMapping("/{id}/verify")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String,Object> verify(@AuthenticationPrincipal CurrentUser user,@PathVariable String id,

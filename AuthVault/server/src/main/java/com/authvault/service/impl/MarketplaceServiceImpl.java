@@ -63,6 +63,7 @@ public class MarketplaceServiceImpl implements MarketplaceService {
     private final Path directory;
     private final Path docDirectory;
     private final String secret;
+    @org.springframework.beans.factory.annotation.Autowired private org.springframework.jdbc.core.JdbcTemplate db;
 
     public MarketplaceServiceImpl(
             MarketplaceListingJpaRepository listings,
@@ -174,13 +175,18 @@ public class MarketplaceServiceImpl implements MarketplaceService {
             protection = access.protection(l.getSellerId(), a.getId(), seller ? token : null);
         }
         boolean locked = Boolean.TRUE.equals(protection.get("isLocked"));
-        boolean preview = "active".equals(l.getStatus()) && !locked;
+        var requests = db.queryForList("SELECT id,status,created_at AS createdAt FROM marketplace_previews WHERE listing_id=? AND buyer_id=?", l.getId(), user);
+        boolean approved = !requests.isEmpty() && "approved".equals(requests.getFirst().get("status"));
+        boolean preview = "active".equals(l.getStatus()) && (seller ? !locked : approved);
+        boolean anonymous = db.queryForList("SELECT listing_id FROM marketplace_options WHERE listing_id=? AND anonymous=1",l.getId()).size()>0;
 
         Map<String, Object> out = map(
             "reference", l.getPublicReference(),
             "title", l.getTitle(),
             "description", l.getDescription(),
-            "price", l.getPrice(),
+            "price", agreedPrice(l,user),
+            "isAnonymous", anonymous,
+            "previewRequest", requests.isEmpty()?null:requests.getFirst(),
             "currency", "VaultChain Credits",
             "status", l.getStatus(),
             "createdAt", l.getCreatedAt(),
@@ -193,7 +199,7 @@ public class MarketplaceServiceImpl implements MarketplaceService {
                 "pageCount", doc.getPageCount(),
                 "sha256", doc.getSha256Hash()
             ),
-            "seller", map("reference", owner(l.getSellerId()), "isCurrentUser", seller),
+            "seller", map("reference", owner(l.getSellerId()), "name", anonymous ? "Anonymous creator" : db.queryForObject("SELECT full_name FROM users WHERE id=?",String.class,l.getSellerId()), "isCurrentUser", seller),
             "asset", map(
                 "id", seller ? a.getId() : null,
                 "reference", "AV-A" + String.format("%06d", a.getId()),
@@ -282,6 +288,7 @@ public class MarketplaceServiceImpl implements MarketplaceService {
             if (!allocated) throw new ApiException(503, "Could not allocate a listing reference");
             l = listings.saveAndFlush(l);
             manager.refresh(l);
+            db.update("INSERT INTO marketplace_options(listing_id,anonymous) VALUES(?,?)",l.getId(),Boolean.TRUE.equals(body.get("isAnonymous"))?1:0);
             return publicListing(l, user, token);
         });
     }
@@ -335,19 +342,77 @@ public class MarketplaceServiceImpl implements MarketplaceService {
         if (!"active".equals(l.getStatus()) || !Objects.equals(a.getOwnerId(), l.getSellerId())) {
             throw new ApiException(404, "Listing content not found");
         }
-        access.assertAssetUnlocked(l.getSellerId(), a.getId(), user == l.getSellerId() ? token : null);
+        if (user == l.getSellerId()) access.assertAssetUnlocked(user,a.getId(),token);
+        else if (db.queryForList("SELECT id FROM marketplace_previews WHERE listing_id=? AND buyer_id=? AND status='approved'",l.getId(),user).isEmpty()) throw new ApiException(403,"Request preview access from the seller first");
         try {
             Path targetFile = directory.resolve(Path.of(a.getFileName()).getFileName());
             if (!Files.exists(targetFile)) {
                 targetFile = docDirectory.resolve(Path.of(a.getFileName()).getFileName());
             }
             return ResponseEntity.ok()
-                .header(HttpHeaders.CACHE_CONTROL, "private, max-age=300")
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
                 .contentType(MediaType.parseMediaType(a.getMimeType() == null ? "application/octet-stream" : a.getMimeType()))
                 .body(Files.readAllBytes(targetFile));
         } catch (Exception e) {
             throw new ApiException(404, "Not Found");
         }
+    }
+
+    public synchronized Map<String,Object> tip(long user,String ref){
+        return transaction.execute(state->{
+            var l=internal(ref);if(user==l.getSellerId())throw new ApiException(400,"You cannot tip yourself");
+            String tx="TIP-"+java.util.UUID.randomUUID();
+            if(db.update("UPDATE wallets SET balance=ROUND(balance-5,2) WHERE user_id=? AND balance>=5",user)!=1)throw new ApiException(400,"Insufficient wallet balance");
+            db.update("UPDATE wallets SET balance=ROUND(balance+5,2) WHERE user_id=?",l.getSellerId());
+            db.update("INSERT INTO wallet_transactions(wallet_id,type,amount,description,reference_id) SELECT id,'withdrawal',5,'Creator tip',? FROM wallets WHERE user_id=?",tx,user);
+            db.update("INSERT INTO wallet_transactions(wallet_id,type,amount,description,reference_id) SELECT id,'deposit',5,'Creator tip received',? FROM wallets WHERE user_id=?",tx,l.getSellerId());
+            return Map.of("success",true,"amount",5,"reference",tx);
+        });
+    }
+
+    private double agreedPrice(MarketplaceListing l,long user){
+        return db.query("SELECT amount FROM marketplace_offers WHERE listing_id=? AND buyer_id=?",(r,n)->r.getDouble(1),l.getId(),user).stream().findFirst().orElse(l.getPrice());
+    }
+    public Map<String,Object> previewRequest(long user,String ref){
+        var l=internal(ref);
+        if(l.getSellerId()==user||!"active".equals(l.getStatus()))throw new ApiException(409,"Only buyers of active listings can request access");
+        db.update("INSERT INTO marketplace_previews(listing_id,buyer_id) VALUES(?,?) ON CONFLICT DO NOTHING",l.getId(),user);
+        return db.queryForMap("SELECT id,status,created_at AS createdAt FROM marketplace_previews WHERE listing_id=? AND buyer_id=?",l.getId(),user);
+    }
+    public List<Map<String,Object>> previews(long user,String ref){
+        var l=internal(ref);if(l.getSellerId()!=user)throw new ApiException(404,"Listing not found");
+        return db.queryForList("SELECT p.id,p.status,p.created_at AS createdAt,u.full_name AS buyerName FROM marketplace_previews p JOIN users u ON p.buyer_id=u.id WHERE listing_id=? ORDER BY p.id DESC",l.getId());
+    }
+    public Map<String,Object> decidePreview(long user,String token,String ref,long id,String status){
+        var l=internal(ref);if(l.getSellerId()!=user)throw new ApiException(404,"Listing not found");
+        if(!List.of("approved","denied","revoked").contains(status))throw new ApiException(400,"Invalid request status");
+        if("approved".equals(status)){if(!"active".equals(l.getStatus()))throw new ApiException(409,"Listing is no longer active");access.assertAssetUnlocked(user,l.getAssetId(),token);}
+        if(db.update("UPDATE marketplace_previews SET status=? WHERE id=? AND listing_id=?",status,id,l.getId())==0)throw new ApiException(404,"Request not found");
+        return db.queryForMap("SELECT id,status FROM marketplace_previews WHERE id=?",id);
+    }
+    public List<Map<String,Object>> messages(long user,String ref){
+        var l=internal(ref);
+        return db.queryForList("SELECT m.id,m.buyer_id AS buyerId,m.sender_id AS senderId,m.message AS text,m.amount,m.created_at AS time,u.full_name AS senderName FROM marketplace_messages m JOIN users u ON u.id=m.sender_id WHERE listing_id=? AND (?= ? OR buyer_id=?) ORDER BY m.id",l.getId(),user,l.getSellerId(),user);
+    }
+    public Map<String,Object> sendMessage(long user,String ref,Map<String,Object>b){
+        var l=internal(ref);if(!"active".equals(l.getStatus()))throw new ApiException(409,"Listing is no longer active");
+        boolean seller=l.getSellerId()==user;
+        long buyer=user;
+        if(seller){try{buyer=Long.parseLong(String.valueOf(b.get("buyerId")));}catch(Exception e){throw new ApiException(400,"Choose a buyer conversation");}
+            if(db.queryForList("SELECT id FROM marketplace_messages WHERE listing_id=? AND buyer_id=?",l.getId(),buyer).isEmpty())throw new ApiException(404,"Conversation not found");}
+        String message=text(b.get("text"),"Message",2000,b.get("amount")==null);
+        Double amount=b.get("amount")==null?null:price(b.get("amount"));
+        db.update("INSERT INTO marketplace_messages(listing_id,buyer_id,sender_id,message,amount) VALUES(?,?,?,?,?)",l.getId(),buyer,user,message==null?"Price offer":message,amount);
+        return Map.of("success",true);
+    }
+    public Map<String,Object> acceptOffer(long user,String ref,long id){
+        var l=internal(ref);
+        var rows=db.queryForList("SELECT * FROM marketplace_messages WHERE id=? AND listing_id=? AND amount IS NOT NULL",id,l.getId());
+        if(rows.isEmpty())throw new ApiException(404,"Offer not found");var offer=rows.getFirst();
+        long buyer=((Number)offer.get("buyer_id")).longValue(),sender=((Number)offer.get("sender_id")).longValue();
+        if(!"active".equals(l.getStatus())||sender==user || !(user==l.getSellerId()||user==buyer))throw new ApiException(403,"You cannot accept this offer");
+        db.update("INSERT INTO marketplace_offers(listing_id,buyer_id,amount) VALUES(?,?,?) ON CONFLICT(listing_id,buyer_id) DO UPDATE SET amount=excluded.amount",l.getId(),buyer,offer.get("amount"));
+        return Map.of("success",true,"price",offer.get("amount"));
     }
 
     @Override
@@ -358,6 +423,7 @@ public class MarketplaceServiceImpl implements MarketplaceService {
             Asset a = assets.findById(l.getAssetId()).orElseThrow(() -> new ApiException(409, "The seller no longer owns this asset"));
             if (!Objects.equals(a.getOwnerId(), l.getSellerId())) throw new ApiException(409, "The seller no longer owns this asset");
             if (l.getSellerId() == user) throw new ApiException(409, "You cannot purchase your own listing");
+            l.setPrice(agreedPrice(l,user));
             Wallet buyer = wallets.findByUserId(user).orElseThrow(() -> new ApiException(404, "Wallet not found"));
             Wallet seller = wallets.findByUserId(l.getSellerId()).orElseThrow(() -> new ApiException(404, "Wallet not found"));
             if (buyer.getBalance() < l.getPrice()) throw new ApiException(400, "Insufficient VaultChain Credits");
@@ -368,7 +434,14 @@ public class MarketplaceServiceImpl implements MarketplaceService {
             double payout = Math.round((l.getPrice() - fee) * 100) / 100.0;
 
             buyer.setBalance(newBuyer);
-            seller.setBalance(Math.round((seller.getBalance() + payout) * 100) / 100.0);
+            var organizationIds=db.query("SELECT organization_id FROM organization_listings WHERE listing_id=?",(r,n)->r.getString(1),l.getId());
+            boolean organizationSale=!organizationIds.isEmpty();
+            seller.setBalance(Math.round((seller.getBalance() + (organizationSale?0:payout)) * 100) / 100.0);
+            if(organizationSale){
+                String organizationId=organizationIds.getFirst();
+                db.update("UPDATE organizations SET data=json_set(data,'$.treasuryBalance',ROUND(COALESCE(json_extract(data,'$.treasuryBalance'),0)+?,2),'$.totalSales',ROUND(COALESCE(json_extract(data,'$.totalSales'),0)+?,2)) WHERE id=?",payout,l.getPrice(),organizationId);
+                db.update("UPDATE organizations SET data=json_insert(data,'$.sales[#]',json_object('id',?,'date',datetime('now'),'assetTitle',?,'buyer',?,'grossAmount',?,'treasuryCut',?,'creatorPayout',0,'txHash',?), '$.treasuryTransactions[#]',json_object('id',?,'type','Inflow','category','Marketplace sale','amount',?,'recipient','Treasury','date',datetime('now'),'note',?,'status','Executed','txHash',?)) WHERE id=?","sale-"+l.getPublicReference(),l.getTitle(),owner(user),l.getPrice(),payout,l.getPublicReference(),l.getPublicReference(),payout,l.getTitle(),l.getPublicReference(),organizationId);
+            }
             wallets.saveAndFlush(buyer);
             wallets.saveAndFlush(seller);
 
@@ -426,6 +499,7 @@ public class MarketplaceServiceImpl implements MarketplaceService {
             debit.setReferenceId(tx);
             transactions.saveAndFlush(debit);
 
+            if (!organizationSale) {
             WalletTransaction credit = new WalletTransaction();
             credit.setWalletId(seller.getId());
             credit.setType("sale");
@@ -433,6 +507,7 @@ public class MarketplaceServiceImpl implements MarketplaceService {
             credit.setDescription("Marketplace sale payout after " + java.math.BigDecimal.valueOf(rate * 100).stripTrailingZeros().toPlainString() + "% platform fee: " + a.getTitle());
             credit.setReferenceId(tx);
             transactions.saveAndFlush(credit);
+            }
 
             return map(
                 "transactionReference", tx,

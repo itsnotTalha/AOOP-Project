@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class DashboardReadRepository {
     private final EntityManager entityManager;
+    @org.springframework.beans.factory.annotation.Autowired private org.springframework.jdbc.core.JdbcTemplate db;
     public DashboardReadRepository(EntityManager entityManager){this.entityManager=entityManager;}
     private static long number(Object value){return value==null?0:((Number)value).longValue();}
     private static double decimal(Object value){return value==null?0:((Number)value).doubleValue();}
@@ -21,7 +22,7 @@ public class DashboardReadRepository {
         Object[] counts=(Object[])entityManager.createNativeQuery("""
             SELECT (SELECT COUNT(*) FROM assets WHERE owner_id = ?1),
                    (SELECT COUNT(*) FROM documents WHERE owner_id = ?1),
-                   (SELECT COUNT(*) FROM verification_reports WHERE user_id = ?1),
+                   ((SELECT COUNT(*) FROM verification_reports WHERE user_id = ?1)+(SELECT COUNT(*) FROM document_verifications WHERE user_id=?1)),
                    (SELECT COUNT(*) FROM vaults WHERE user_id = ?1),
                    (SELECT COUNT(DISTINCT va.asset_id) FROM vault_assets va JOIN vaults v ON v.id=va.vault_id WHERE v.user_id=?1),
                    (SELECT COUNT(*) FROM marketplace_listings WHERE seller_id=?1 AND status='active'),
@@ -68,6 +69,33 @@ public class DashboardReadRepository {
             Object[] values=(Object[])raw;
             activities.add(row(new String[]{"type","title","amount","reference","status","assetId","documentId","createdAt"},values));
         }
-        out.put("recentActivity",activities);return out;
+        out.put("recentActivity",activities);out.put("analytics",analytics(userId));return out;
     }
+    private Map<String,Object> analytics(long user){
+        var today=java.time.LocalDate.now(java.time.ZoneOffset.UTC);var start=today.minusDays(29);
+        Map<String,Map<String,Object>> daily=new LinkedHashMap<>();
+        for(int i=0;i<30;i++){String date=start.plusDays(i).toString();var day=new LinkedHashMap<String,Object>();day.put("date",date);for(String key:List.of("assets","documents","verifications","earnings","spending"))day.put(key,0);daily.put(date,day);}
+        var activity=db.queryForList("""
+            SELECT day,kind,COUNT(*) AS count FROM (
+              SELECT date(created_at) AS day,'assets' AS kind FROM assets WHERE owner_id=?
+              UNION ALL SELECT date(created_at),'documents' FROM documents WHERE owner_id=?
+              UNION ALL SELECT date(created_at),'verifications' FROM verification_reports WHERE user_id=?
+              UNION ALL SELECT date(created_at),'verifications' FROM document_verifications WHERE user_id=?
+            ) WHERE day BETWEEN ? AND ? GROUP BY day,kind
+            """,user,user,user,user,start.toString(),today.toString());
+        for(var r:activity)daily.get(r.get("day")).put((String)r.get("kind"),r.get("count"));
+        var trading=db.queryForList("""
+            SELECT date(t.created_at) AS day,
+             SUM(CASE WHEN seller_id=? AND o.listing_id IS NULL THEN seller_amount ELSE 0 END) AS earnings,
+             SUM(CASE WHEN buyer_id=? THEN sale_amount ELSE 0 END) AS spending
+            FROM marketplace_transactions t LEFT JOIN organization_listings o ON o.listing_id=t.listing_id
+            WHERE (seller_id=? OR buyer_id=?) AND t.status='completed' AND date(t.created_at) BETWEEN ? AND ? GROUP BY date(t.created_at)
+            """,user,user,user,user,start.toString(),today.toString());
+        for(var r:trading){daily.get(r.get("day")).put("earnings",r.get("earnings"));daily.get(r.get("day")).put("spending",r.get("spending"));}
+        return Map.of("daily",new ArrayList<>(daily.values()),"timezone","UTC",
+            "categories",db.queryForList("SELECT COALESCE(NULLIF(category,''),'Uncategorized') AS name,COUNT(*) AS value FROM assets WHERE owner_id=? GROUP BY COALESCE(NULLIF(category,''),'Uncategorized') ORDER BY value DESC,name",user),
+            "ocr",db.queryForList("SELECT ocr_status AS name,COUNT(*) AS value FROM documents WHERE owner_id=? GROUP BY ocr_status ORDER BY value DESC",user),
+            "verification",db.queryForList("SELECT COALESCE(status,'unknown') AS name,COUNT(*) AS value FROM (SELECT status FROM verification_reports WHERE user_id=? UNION ALL SELECT status FROM document_verifications WHERE user_id=?) GROUP BY status ORDER BY value DESC",user,user));
+    }
+
 }

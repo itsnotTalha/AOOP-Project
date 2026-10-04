@@ -1,3 +1,4 @@
+com/authvault/service/AccountExtras.class
 com/authvault/service/WalletService.class
 com/authvault/security/SecurityErrors.class
 com/authvault/repository/AssetJpaRepository.class
@@ -31,6 +32,8 @@ com/authvault/service/DocumentService.class
 com/authvault/repository/AssetHashJpaRepository.class
 com/authvault/repository/VerificationReportJpaRepository.class
 com/authvault/repository/AdminReadRepository.class
+com/authvault/controller/OrganizationController.class
+com/authvault/service/OrganizationService.class
 com/authvault/entity/VaultAssetId.class
 com/authvault/repository/VaultUnlockSessionJpaRepository.class
 com/authvault/controller/AdminController.class
@@ -108,6 +111,7 @@ com/authvault/repository/BlockchainBlockJpaRepository.class
 com/authvault/repository/DocumentJpaRepository.class
 com/authvault/dto/ErrorResponse.class
 com/authvault/service/impl/BlockHash.class
+com/authvault/service/OrganizationService$1.class
 com/authvault/repository/VaultAssetJpaRepository.class
 com/authvault/service/impl/BlockchainServiceImpl.class
 com/authvault/repository/FractionalOwnershipJpaRepository.class

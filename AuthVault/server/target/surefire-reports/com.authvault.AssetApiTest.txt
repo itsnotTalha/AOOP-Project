@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.authvault.AssetApiTest
 -------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.369 s -- in com.authvault.AssetApiTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.325 s -- in com.authvault.AssetApiTest

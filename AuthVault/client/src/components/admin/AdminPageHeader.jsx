@@ -5,7 +5,7 @@ const ranges = [{ label: 'Today', value: 'today' }, { label: 'Last 7 Days', valu
 
 export function downloadReport(name, rows = []) {
 	const encode = (value) => `"${String(typeof value === 'object' && value !== null ? JSON.stringify(value) : value ?? '').replaceAll('"','""')}"`;
-	const lines = rows.length ? [Object.keys(rows[0]).map(encode).join(','), ...rows.map((row) => Object.keys(rows[0]).map((key) => encode(row[key])).join(','))] : [['Metric','Value'],['Generated',new Date().toISOString()],['Platform','AuthVault']].map((row) => row.map(encode).join(','));
+	const lines = rows.length ? [Object.keys(rows[0]).map(encode).join(','), ...rows.map((row) => Object.keys(rows[0]).map((key) => encode(row[key])).join(','))] : [['Metric','Value'],['Generated',new Date().toISOString()],['Platform','VaultChain']].map((row) => row.map(encode).join(','));
 	const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
 	const url = URL.createObjectURL(blob);
 	const link = document.createElement('a'); link.href = url; link.download = `${name}.csv`; link.click(); URL.revokeObjectURL(url);

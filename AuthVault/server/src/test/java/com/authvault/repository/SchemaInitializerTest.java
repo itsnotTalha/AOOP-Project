@@ -38,7 +38,8 @@ class SchemaInitializerTest {
                         "asset_hashes", "documents", "ocr_results", "document_verifications", "verification_reports", "blockchain_blocks",
                         "marketplace_listings", "marketplace_transactions", "admin_activity_logs", "platform_settings",
                         "ownership_history", "fractional_ownership", "vault_items", "vaults", "vault_assets",
-                        "vault_unlock_sessions", "vault_unlock_attempts", "notifications");
+                        "vault_unlock_sessions", "vault_unlock_attempts", "notifications",
+                        "account_extras", "marketplace_previews", "marketplace_messages", "marketplace_options", "marketplace_offers", "organizations", "organization_listings", "document_metadata");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'", Integer.class))
                 .isEqualTo(34); // 30 base indexes plus four migration indexes.
         assertThat(jdbc.queryForList("SELECT name FROM sqlite_master WHERE type='index'", String.class))

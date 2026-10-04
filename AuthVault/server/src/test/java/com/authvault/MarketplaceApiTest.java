@@ -34,6 +34,9 @@ class MarketplaceApiTest {
  .andExpect(status().isCreated()).andExpect(jsonPath("$.listing.asset.previewAvailable").value(true)).andReturn().getResponse().getContentAsString());
  String ref=created.path("listing").path("reference").asText();assertThat(ref).matches("ML-[A-F0-9]{6}");
  mvc.perform(get("/api/marketplace/listings").header("Authorization",buyer)).andExpect(status().isOk()).andExpect(jsonPath("$.listings.length()").value(1));
+ mvc.perform(get("/api/marketplace/listings/"+ref+"/content").header("Authorization",buyer)).andExpect(status().isForbidden());
+ long previewId=json.readTree(mvc.perform(post("/api/marketplace/listings/"+ref+"/preview-requests").header("Authorization",buyer)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("request").path("id").asLong();
+ mvc.perform(patch("/api/marketplace/listings/"+ref+"/preview-requests/"+previewId).header("Authorization",seller).contentType("application/json").content("{\"status\":\"approved\"}")).andExpect(status().isOk());
  mvc.perform(get("/api/marketplace/listings/"+ref+"/content").header("Authorization",buyer)).andExpect(status().isOk());
  mvc.perform(patch("/api/marketplace/listings/"+ref).header("Authorization",buyer).contentType("application/json").content("{\"price\":50}"))
  .andExpect(status().isNotFound());
