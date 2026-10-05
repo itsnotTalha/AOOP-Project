@@ -1,0 +1,90 @@
+import { createContext, useContext, useEffect, useState } from 'react';
+
+import { organizationService } from '../services/organizationService';
+import { authService } from '../services/authService';
+
+const AuthContext = createContext(null);
+
+export function AuthProvider({ children }) {
+	const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
+	const [user, setUser] = useState(null);
+	const [authLoading, setAuthLoading] = useState(authService.isAuthenticated());
+
+	useEffect(() => {
+		let active = true;
+
+		if (!authService.isAuthenticated()) {
+			setAuthLoading(false);
+			return () => { active = false; };
+		}
+
+		authService.getCurrentUser()
+			.then(async (currentUser) => {
+				if (active) { organizationService.setAccount(currentUser.id); await organizationService.refresh().catch(() => {}); if (active) setUser(currentUser); }
+			})
+			.catch(() => {
+				if (active) {
+					authService.logout();
+					setIsAuthenticated(false);
+				}
+			})
+			.finally(() => {
+				if (active) setAuthLoading(false);
+			});
+
+		return () => { active = false; };
+	}, []);
+
+	async function login(credentials) {
+		const authenticatedUser = await authService.login(credentials);
+		organizationService.setAccount(authenticatedUser.id);
+        await organizationService.refresh().catch(() => {});
+		setUser(authenticatedUser);
+		setIsAuthenticated(true);
+		return authenticatedUser;
+	}
+
+	async function register(payload) {
+		const authenticatedUser = await authService.register(payload);
+		organizationService.setAccount(authenticatedUser.id);
+        await organizationService.refresh().catch(() => {});
+		setUser(authenticatedUser);
+		setIsAuthenticated(true);
+		return authenticatedUser;
+	}
+
+	async function logout() {
+		try { await authService.logout(); }
+		finally {
+			setIsAuthenticated(false);
+			setUser(null);
+			organizationService.setAccount(null);
+		}
+	}
+
+	async function updateProfile(profile) {
+		const updatedUser = await authService.updateProfile(profile);
+		setUser(updatedUser);
+		return updatedUser;
+	}
+
+	async function changePassword(passwords) {
+		return authService.changePassword(passwords);
+	}
+
+	return (
+		<AuthContext.Provider value={{ isAuthenticated, user, authLoading, login, register, logout, updateProfile, changePassword }}>
+			{children}
+		</AuthContext.Provider>
+	);
+}
+
+export function useAuth() {
+	const context = useContext(AuthContext);
+
+	if (!context) {
+		throw new Error('useAuth must be used within an AuthProvider');
+	}
+
+	return context;
+}

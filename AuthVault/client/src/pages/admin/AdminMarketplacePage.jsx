@@ -1,0 +1,21 @@
+import { CircleDollarSign, Search, ShoppingBag, Store, Tag } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+import { formatInteger, formatMoney, formatDate } from '../../admin/adminUtils';
+import useAdminData from '../../admin/useAdminData';
+import { AdminEmpty, AdminError, AdminLoading } from '../../components/admin/AdminDataState';
+import AdminPageHeader, { downloadReport } from '../../components/admin/AdminPageHeader';
+import AnalyticsCard from '../../components/admin/AnalyticsCard';
+import StatCard from '../../components/admin/StatCard';
+import { useAuth } from '../../context/AuthContext';
+import { adminService } from '../../services/adminService';
+
+export default function AdminMarketplacePage() {
+	const { user } = useAuth(); const { range, setRange, data, loading, error, reload } = useAdminData(adminService.getMarketplace); const [query, setQuery] = useState(''); const [filter, setFilter] = useState('All'); const [actionError, setActionError] = useState('');
+	const rows = useMemo(() => (data?.rows || []).filter((row) => (filter === 'All' || row.status === filter.toLowerCase()) && `${row.asset} ${row.owner} ${row.public_reference}`.toLowerCase().includes(query.toLowerCase())), [data, query, filter]);
+	async function toggleListing(row) { setActionError(''); const status = row.status === 'active' ? 'cancelled' : 'active'; try { await adminService.updateListing(row.id, status); await reload(); } catch (updateError) { setActionError(updateError.message); } }
+	const header = <AdminPageHeader eyebrow="Commerce" title="Marketplace management" description="Listings and commission from persisted marketplace activity." range={range} onRangeChange={setRange} exportName={data ? 'vaultchain-marketplace' : undefined} onExport={() => downloadReport('vaultchain-marketplace', rows)}/>;
+	if (error) return <>{header}<AdminError message={error} onRetry={reload}/></>; if (loading || !data) return <>{header}<AdminLoading/></>;
+	const summary = data.summary; const canModerate = ['SUPER_ADMIN','MODERATOR'].includes(String(user?.role).toUpperCase());
+	return <>{header}{actionError ? <div className="error-banner">{actionError}</div> : null}<div className="admin-stats-grid"><StatCard label="Listings created" value={formatInteger(summary.totalListings)} detail={`${formatInteger(summary.activeListings)} currently active`} icon={Store}/><StatCard label="Sold assets" value={formatInteger(summary.soldAssets)} detail="Within selected period" icon={ShoppingBag} tone="green"/><StatCard label="Average selling price" value={formatMoney(summary.averageSellingPrice)} detail="Completed listings" icon={Tag} tone="blue"/><StatCard label="Commission earned" value={formatMoney(summary.commissionEarned)} detail="Completed transactions" icon={CircleDollarSign} tone="amber"/></div><AnalyticsCard title="Marketplace listings" description="Listings created in the selected period" action={<div className="admin-table-tools"><label><Search size={15}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search listings"/></label><select value={filter} onChange={(event) => setFilter(event.target.value)}><option>All</option><option>Active</option><option>Sold</option><option>Cancelled</option></select></div>}>{rows.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Asset</th><th>Owner</th><th>Price</th><th>Created</th><th>Platform fee</th><th>Status</th><th/></tr></thead><tbody>{rows.map((row) => <tr key={row.id}><td><div className="admin-listing-cell"><span>{row.public_reference?.slice(-2) || row.id}</span><strong>{row.asset}</strong></div></td><td>{row.owner}</td><td className="admin-table__money">{formatMoney(row.price)}</td><td>{formatDate(row.created_at)}</td><td className="admin-table__fee">{formatMoney(row.platform_fee)}</td><td><span className={`admin-status is-${row.status === 'active' ? 'success' : row.status === 'sold' ? 'info' : 'warning'}`}>{row.status}</span></td><td>{canModerate && row.status !== 'sold' ? <button className="admin-button is-quiet" type="button" onClick={() => toggleListing(row)}>{row.status === 'active' ? 'Cancel' : 'Reactivate'}</button> : null}</td></tr>)}</tbody></table></div> : <AdminEmpty title="No marketplace listings" description="Listings created in this period will appear here."/>}</AnalyticsCard></>;
+}

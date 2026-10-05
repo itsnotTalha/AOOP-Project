@@ -1,0 +1,109 @@
+{
+  "generator": {
+    "node": "v22.23.2",
+    "bcrypt": "5.1.1",
+    "jsonwebtoken": "9.0.3"
+  },
+  "secret": "vaultchain-auth-compatibility-fixture-secret",
+  "issuedAt": 1577836800,
+  "tokens": {
+    "HS256": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTAwMSwiZW1haWwiOiJvbGRAZXhhbXBsZS50ZXN0Iiwicm9sZSI6IlNVUEVSX0FETUlOIiwic3RhdHVzIjoiYWN0aXZlIiwianRpIjoiMTIzNDU2NzgtMTIzNC00MjM0LTkyMzQtMTIzNDU2Nzg5YWJjIiwiaWF0IjoxNTc3ODM2ODAwLCJleHAiOjQxMDI0NDQ4MDB9.KeIaziIMLqD6e7osuSjwIixPp2h7IW9JiQGETFiMPZw",
+    "HS384": "eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJpZCI6OTAwMSwiZW1haWwiOiJvbGRAZXhhbXBsZS50ZXN0Iiwicm9sZSI6IlNVUEVSX0FETUlOIiwic3RhdHVzIjoiYWN0aXZlIiwianRpIjoiMTIzNDU2NzgtMTIzNC00MjM0LTkyMzQtMTIzNDU2Nzg5YWJjIiwiaWF0IjoxNTc3ODM2ODAwLCJleHAiOjQxMDI0NDQ4MDB9.DUCCrAjAiNfu8GpRcD0PNW0K8mzzgdxbb1ap-aKBnTQOshYUKP9zOlGairy0LhI0",
+    "HS512": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTAwMSwiZW1haWwiOiJvbGRAZXhhbXBsZS50ZXN0Iiwicm9sZSI6IlNVUEVSX0FETUlOIiwic3RhdHVzIjoiYWN0aXZlIiwianRpIjoiMTIzNDU2NzgtMTIzNC00MjM0LTkyMzQtMTIzNDU2Nzg5YWJjIiwiaWF0IjoxNTc3ODM2ODAwLCJleHAiOjQxMDI0NDQ4MDB9.a9cYrf43Of2C22LZCDXtNqh7KnhZEyVEP-Uz4yp7bnlMUj3f2mlOLPyAjKgs_tLCjvs9ivJquSH1SIOPuDUm4Q",
+    "expired": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTAwMSwiZW1haWwiOiJvbGRAZXhhbXBsZS50ZXN0Iiwicm9sZSI6IlNVUEVSX0FETUlOIiwic3RhdHVzIjoiYWN0aXZlIiwianRpIjoiMTIzNDU2NzgtMTIzNC00MjM0LTkyMzQtMTIzNDU2Nzg5YWJjIiwiaWF0IjoxNTc3ODM2ODAwLCJleHAiOjE1Nzc4MzY4MDF9._O2DKAKeDEByCidlDnl4r_RLckbw_cFxIKSorpfDO_A",
+    "futureNbf": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTAwMSwiZW1haWwiOiJvbGRAZXhhbXBsZS50ZXN0Iiwicm9sZSI6IlNVUEVSX0FETUlOIiwic3RhdHVzIjoiYWN0aXZlIiwianRpIjoiMTIzNDU2NzgtMTIzNC00MjM0LTkyMzQtMTIzNDU2Nzg5YWJjIiwiaWF0IjoxNTc3ODM2ODAwLCJleHAiOjQxMDI0NDQ4MDAsIm5iZiI6NDEwMjQ0NDcwMH0.uJi4wuDMsjd19Bznl9cTYdp3pWVzrvslP2MDMrjyCdQ",
+    "futureIat": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTAwMSwiZW1haWwiOiJvbGRAZXhhbXBsZS50ZXN0Iiwicm9sZSI6IlNVUEVSX0FETUlOIiwic3RhdHVzIjoiYWN0aXZlIiwianRpIjoiMTIzNDU2NzgtMTIzNC00MjM0LTkyMzQtMTIzNDU2Nzg5YWJjIiwiaWF0Ijo0MTAyNDQ0NzAwLCJleHAiOjQxMDI0NDQ4MDB9.dJ7U3ckP1Ne3frJ-0apzXnDEa9N2neNnlQOO8q6C9QI",
+    "withoutExp": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTAwMSwiaWF0IjoxNTc3ODM2ODAwfQ.DqfU9IDdx2F-J89vfEU6lISg7DgUPruDd0JFwnxDCzc",
+    "withoutId": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjQxMDI0NDQ4MDAsImlhdCI6MTU3NzgzNjgwMH0.trhsuWPbzDi6GStNegVjw7GAUJz5cryAuxJYXpyhg3A",
+    "none": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJpZCI6OTAwMSwiZW1haWwiOiJvbGRAZXhhbXBsZS50ZXN0Iiwicm9sZSI6IlNVUEVSX0FETUlOIiwic3RhdHVzIjoiYWN0aXZlIiwianRpIjoiMTIzNDU2NzgtMTIzNC00MjM0LTkyMzQtMTIzNDU2Nzg5YWJjIiwiaWF0IjoxNTc3ODM2ODAwLCJleHAiOjQxMDI0NDQ4MDB9."
+  },
+  "tokenFingerprint": "acc3ff22345392926e0e9a740935f77bd1fe28461423c7c12c0961feb6edd62f",
+  "passwords": [
+    {
+      "password": "LegacyPass123!",
+      "hash": "$2b$10$N9qo8uLOickgx2ZMRZoMyej9Ax8MeRiWEi/jY.JcgjF1blTf8h1L6"
+    },
+    {
+      "password": "পাসওয়ার্ড🔒123",
+      "hash": "$2b$10$N9qo8uLOickgx2ZMRZoMyeO8NL3wbZ/PeItUwF/ubsgbSFXLaTixm"
+    },
+    {
+      "password": "ééééééééééééééééééééééééééééééééééé🔒suffix",
+      "hash": "$2b$10$N9qo8uLOickgx2ZMRZoMyescqZUKcPspFqYTsLqkLdbN.x3Gh8fgW"
+    },
+    {
+      "password": "before\u0000after123",
+      "hash": "$2b$10$N9qo8uLOickgx2ZMRZoMyeSqV.J1qbndfcWCVhQeJvVPyXIsvLoaG"
+    },
+    {
+      "password": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "hash": "$2b$10$N9qo8uLOickgx2ZMRZoMye5mlC/WoAmNnGP3YkHGchsBkco85S4ZC"
+    },
+    {
+      "password": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "hash": "$2b$10$N9qo8uLOickgx2ZMRZoMye5mlC/WoAmNnGP3YkHGchsBkco85S4ZC"
+    },
+    {
+      "password": "\ud800Pass123!",
+      "hash": "$2b$10$N9qo8uLOickgx2ZMRZoMyeWVPHXvooXdofpwgXuPwp0EY8QIgSuqW"
+    },
+    {
+      "password": "LegacyPass123!",
+      "hash": "$2a$10$N9qo8uLOickgx2ZMRZoMyej9Ax8MeRiWEi/jY.JcgjF1blTf8h1L6"
+    }
+  ],
+  "expiry": [
+    {
+      "value": "7d",
+      "expiresAt": 1578441600
+    },
+    {
+      "value": "2 hours",
+      "expiresAt": 1577844000
+    },
+    {
+      "value": "120",
+      "expiresAt": 1577836800
+    },
+    {
+      "value": "1500",
+      "expiresAt": 1577836801
+    },
+    {
+      "value": "-1s",
+      "expiresAt": 1577836799
+    },
+    {
+      "value": ".5s",
+      "expiresAt": 1577836800
+    },
+    {
+      "value": "1 year",
+      "expiresAt": 1609394400
+    },
+    {
+      "value": "1w",
+      "expiresAt": 1578441600
+    },
+    {
+      "value": "1.5d",
+      "expiresAt": 1577966400
+    },
+    {
+      "value": "0",
+      "expiresAt": 1577836800
+    },
+    {
+      "value": " 2d",
+      "error": "\"expiresIn\" should be a number of seconds or string representing a timespan eg: \"1d\", \"20h\", 60"
+    },
+    {
+      "value": "2d ",
+      "error": "\"expiresIn\" should be a number of seconds or string representing a timespan eg: \"1d\", \"20h\", 60"
+    },
+    {
+      "value": "invalid",
+      "error": "\"expiresIn\" should be a number of seconds or string representing a timespan eg: \"1d\", \"20h\", 60"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+/target/
+/data/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+.env
+.env.*
+.idea/
+.vscode/
+node_modules/
+dist/

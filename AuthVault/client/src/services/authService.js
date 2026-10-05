@@ -1,0 +1,132 @@
+import { API_BASE_URL, AUTH_TOKEN_KEY } from '../constants/api';
+
+function getToken() {
+	return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+function setToken(token) {
+	localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+function clearToken() {
+	localStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+async function request(path, options) {
+	const response = await fetch(`${API_BASE_URL}${path}`, options);
+	const data = await response.json();
+
+	if (!response.ok) {
+		throw new Error(data.message || 'Request failed');
+	}
+
+	return data;
+}
+
+async function login({ identifier, email, username, password }) {
+	const data = await request('/auth/login', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ identifier: identifier ?? email ?? username, password }),
+	});
+
+	setToken(data.token);
+	return data.user;
+}
+
+async function register({ fullName, email, password }) {
+	const data = await request('/auth/register', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ fullName, email, password }),
+	});
+
+	setToken(data.token);
+	return data.user;
+}
+
+async function getCurrentUser() {
+	const data = await request('/auth/me', {
+		headers: { Authorization: `Bearer ${getToken()}` },
+	});
+
+	return {
+		id: data.user.id,
+		username: data.user.username,
+		fullName: data.user.fullName || data.user.full_name,
+		email: data.user.email,
+		role: data.user.role,
+		status: data.user.status,
+		createdAt: data.user.createdAt || data.user.created_at,
+	};
+}
+
+async function updateProfile({ fullName, username }) {
+	const data = await request('/auth/profile', {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+		body: JSON.stringify({ fullName, username }),
+	});
+
+	return data.user;
+}
+
+async function changePassword({ currentPassword, newPassword }) {
+	return request('/auth/password', {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+		body: JSON.stringify({ currentPassword, newPassword }),
+	});
+}
+
+async function logout() {
+	const token = getToken();
+	try {
+		if (token) await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+	} finally {
+		clearToken();
+	}
+}
+
+function getCurrentUserId() {
+	const token = getToken();
+
+	if (!token) {
+		return null;
+	}
+
+	try {
+		const payload = JSON.parse(atob(token.split('.')[1]));
+		return payload.id ?? null;
+	} catch {
+		return null;
+	}
+}
+
+async function getRecoverySettings() {
+ return request('/auth/recovery', { headers: { Authorization: `Bearer ${getToken()}` } });
+}
+async function getRecoveryQuestions() {
+ return request('/auth/recovery/questions');
+}
+async function saveRecoverySettings(payload) {
+ return request('/auth/recovery', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify(payload) });
+}
+async function resetPassword(payload) {
+ return request('/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+}
+export const authService = {
+ getRecoverySettings,
+ getRecoveryQuestions,
+ saveRecoverySettings,
+ resetPassword,
+	login,
+	register,
+	logout,
+	getCurrentUser,
+	updateProfile,
+	changePassword,
+	getCurrentUserId,
+	getToken,
+	isAuthenticated: () => Boolean(getToken()),
+};

@@ -1,0 +1,30 @@
+{
+  "passwords" : [ {
+    "password" : "LegacyPass123!",
+    "hash" : "$2b$10$VtMjgiJFXA6T2yo/z3sYO.mNHkwF2r/ahjl2fcRFeY4VJWIpZ4aTy"
+  }, {
+    "password" : "পাসওয়ার্ড\uD83D\uDD12123",
+    "hash" : "$2b$10$2qF8hw7Bo8tVUcOSvH.CguUAbS8Mf2rUNY0x.F7.BD0qk9paelSDy"
+  }, {
+    "password" : "ééééééééééééééééééééééééééééééééééé\uD83D\uDD12suffix",
+    "hash" : "$2b$10$b3YDgynM5rBhB0IkaHdjT.956Sd8LJOLXhAvMEVq2YkEyZnKchYN."
+  }, {
+    "password" : "before\u0000after123",
+    "hash" : "$2b$10$y4qOObxDI1tC/aIfnQ5fe.e4iPZODZ51FDMVsd2q.NRueIBqnKhJS"
+  }, {
+    "password" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "hash" : "$2b$10$a2wEkMwaISh81pHDZD2Lz.WJMuL8zyiWgLa0.B0pNNTaiGkLXlYU2"
+  }, {
+    "password" : "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "hash" : "$2b$10$TsO9enp92F4jK5HeGku/guxbpK0k7Hb/UJkVYtUfyY9mpA.J2j.K6"
+  }, {
+    "password" : "\uD800Pass123!",
+    "hash" : "$2b$10$Ln70.MW96SNca7tX.upyYuw2gdzAvo.L6Hl1uuMg9zZSzZ9fMdrWG"
+  }, {
+    "password" : "LegacyPass123!",
+    "hash" : "$2b$10$Bo0kS.aBZBcNVxDsz3b00eJtR6O6zxA.Q3V6RkSSJMi6omJr7bDly"
+  } ],
+  "secret" : "vaultchain-auth-compatibility-fixture-secret",
+  "issuedAt" : 1790000000,
+  "token" : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTAwMSwiZW1haWwiOiJqYXZhQGV4YW1wbGUudGVzdCIsInJvbGUiOiJVU0VSIiwic3RhdHVzIjoiYWN0aXZlIiwic2Vzc2lvblZlcnNpb24iOjAsImp0aSI6IjI0MWEwZTdmLWFkMzctNGQ1Yy1hMjlkLTZiZjJlZDEwNTYzOSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwNjA0ODAwfQ.M644E5T-SUh3zw6P2qaKZJk8dcj-qhcNmN_XWy9G3Oo"
+}
