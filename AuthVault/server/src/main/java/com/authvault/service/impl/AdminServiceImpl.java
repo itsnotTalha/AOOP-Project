@@ -22,6 +22,8 @@ public class AdminServiceImpl implements AdminService {
     private final PlatformSettingJpaRepository settings;
     private final AdminActivityLogJpaRepository logs;
     private final NotificationJpaRepository notifications;
+    private final com.authvault.service.BlockchainService blockchainService;
+    private final jakarta.persistence.EntityManager manager;
     private final ObjectMapper json;
     private final Clock clock;
     private static final DateTimeFormatter SQL = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -29,6 +31,8 @@ public class AdminServiceImpl implements AdminService {
     public AdminServiceImpl(AdminReadRepository db, UserJpaRepository users, AssetJpaRepository assets,
                             MarketplaceListingJpaRepository listings, PlatformSettingJpaRepository settings,
                             AdminActivityLogJpaRepository logs, NotificationJpaRepository notifications,
+                            com.authvault.service.BlockchainService blockchainService,
+                            jakarta.persistence.EntityManager manager,
                             ObjectMapper json, Clock clock) {
         this.db = db;
         this.users = users;
@@ -37,6 +41,8 @@ public class AdminServiceImpl implements AdminService {
         this.settings = settings;
         this.logs = logs;
         this.notifications = notifications;
+        this.blockchainService = blockchainService;
+        this.manager = manager;
         this.json = json;
         this.clock = clock;
     }
@@ -268,7 +274,29 @@ public class AdminServiceImpl implements AdminService {
         var trend = timeline(r, mSeries("total", grouped("verification_reports", "COUNT(*)", "", r),
                 "successful", grouped("verification_reports", "SUM(CASE WHEN status NOT IN ('failed', 'rejected') THEN 1 ELSE 0 END)", "", r)));
         trend.forEach(p -> p.put("rate", pct(p.get("successful"), p.get("total"))));
-        return m("range", r, "summary", m("total", rows.size(), "successful", successful, "duplicates", duplicates, "rejected", rejected, "scored", scored),
+        List<Map<String, Object>> disputes;
+        try {
+            disputes = db.rows("""
+                SELECT d.id, d.dispute_reference, d.verification_reference, d.asset_id, d.claimant_id, d.registered_owner_id,
+                       d.reason, d.evidence, d.contact_email, d.match_type, d.confidence, d.status, d.admin_notes,
+                       d.created_at, d.updated_at,
+                       c.full_name AS claimant_name, c.email AS claimant_email,
+                       o.full_name AS owner_name, o.email AS owner_email,
+                       a.title AS asset_title, a.status AS asset_status
+                FROM asset_disputes d
+                JOIN users c ON c.id = d.claimant_id
+                JOIN users o ON o.id = d.registered_owner_id
+                JOIN assets a ON a.id = d.asset_id
+                ORDER BY d.created_at DESC
+            """);
+        } catch (Exception e) {
+            disputes = List.of();
+        }
+        long totalDisputes = disputes.size();
+        long pendingDisputes = disputes.stream().filter(d -> "pending".equals(d.get("status")) || "under_review".equals(d.get("status"))).count();
+        var summary = m("total", rows.size(), "successful", successful, "duplicates", duplicates, "rejected", rejected, "scored", scored,
+                "totalDisputes", totalDisputes, "pendingDisputes", pendingDisputes);
+        return m("range", r, "summary", summary, "disputes", disputes,
                 "trend", trend, "confidence", List.of(
                         m("range", "<80%", "count", counts[0]),
                         m("range", "80–90%", "count", counts[1]),
@@ -504,6 +532,77 @@ public class AdminServiceImpl implements AdminService {
                         m("status", status), address);
                 yield m("id", asset.getId(), "title", asset.getTitle(), "status", asset.getStatus());
             }
+            case "disputes" -> {
+                requireAny(user, SUPER_ADMIN, MODERATOR, VERIFICATION_ADMIN);
+                String status = body.get("status") != null ? String.valueOf(body.get("status")).toLowerCase() : "";
+                if (!Set.of("pending", "under_review", "resolved_transferred", "resolved_removed", "rejected").contains(status)) {
+                    throw new ApiException(400, "Invalid dispute status: " + status);
+                }
+                String adminNotes = body.get("adminNotes") != null ? String.valueOf(body.get("adminNotes")).trim() : "";
+                var dList = db.rows("SELECT * FROM asset_disputes WHERE id = ?", id);
+                if (dList.isEmpty()) throw new ApiException(404, "Dispute not found");
+                var dispute = dList.getFirst();
+                long assetId = ((Number) dispute.get("asset_id")).longValue();
+                long claimantId = ((Number) dispute.get("claimant_id")).longValue();
+                long ownerId = ((Number) dispute.get("registered_owner_id")).longValue();
+                String disputeRef = String.valueOf(dispute.get("dispute_reference"));
+
+                Asset a = assets.findById(assetId).orElse(null);
+
+                if ("resolved_transferred".equals(status) && a != null) {
+                    a.setOwnerId(claimantId);
+                    a.setStatus("active");
+                    a.setUpdatedAt(now());
+                    assets.saveAndFlush(a);
+
+                    manager.createNativeQuery("UPDATE marketplace_listings SET status = 'cancelled' WHERE asset_id = :assetId AND status = 'active'")
+                            .setParameter("assetId", assetId)
+                            .executeUpdate();
+
+                    manager.createNativeQuery("DELETE FROM vault_assets WHERE asset_id = :assetId AND vault_id IN (SELECT id FROM vaults WHERE user_id = :oldOwner)")
+                            .setParameter("assetId", assetId)
+                            .setParameter("oldOwner", ownerId)
+                            .executeUpdate();
+
+                    blockchainService.recordBlock(assetId, claimantId, "DISPUTE_TRANSFER",
+                            "Dispute " + disputeRef + " resolved by Admin #" + user.id() + ". Asset ownership transferred to verified creator User #" + claimantId);
+
+                    notifyUser(claimantId, "Ownership Dispute Approved: " + disputeRef,
+                            "Your ownership claim for asset '" + a.getTitle() + "' was approved by administrators. The asset has been transferred to your vault.");
+
+                    notifyUser(ownerId, "Ownership Dispute Notice: " + disputeRef,
+                            "An administrative dispute review determined prior authentic creation for asset '" + a.getTitle() + "'. Ownership has been reassigned to User #" + claimantId + ".");
+                } else if ("resolved_removed".equals(status) && a != null) {
+                    a.setStatus("suspended");
+                    a.setUpdatedAt(now());
+                    assets.saveAndFlush(a);
+
+                    manager.createNativeQuery("UPDATE marketplace_listings SET status = 'cancelled' WHERE asset_id = :assetId AND status = 'active'")
+                            .setParameter("assetId", assetId)
+                            .executeUpdate();
+
+                    notifyUser(claimantId, "Dispute Resolved: " + disputeRef,
+                            "Your report for asset '" + a.getTitle() + "' was confirmed. The reported asset has been removed from the platform.");
+                    notifyUser(ownerId, "Asset Suspended: " + disputeRef,
+                            "Your asset '" + a.getTitle() + "' has been suspended following an administrative ownership dispute.");
+                } else if ("rejected".equals(status) && a != null) {
+                    notifyUser(claimantId, "Dispute Dismissed: " + disputeRef,
+                            "Your ownership claim for asset '" + a.getTitle() + "' was reviewed and dismissed. Notes: " + (adminNotes.isEmpty() ? "Insufficient prior ownership evidence." : adminNotes));
+                }
+
+                manager.createNativeQuery("UPDATE asset_disputes SET status = :status, admin_notes = :notes, reviewed_by = :adminId, updated_at = :now WHERE id = :id")
+                        .setParameter("status", status)
+                        .setParameter("notes", adminNotes)
+                        .setParameter("adminId", user.id())
+                        .setParameter("now", now())
+                        .setParameter("id", id)
+                        .executeUpdate();
+
+                logAction(user.id(), "resolved_asset_dispute", "asset_dispute", disputeRef,
+                        m("status", status, "adminNotes", adminNotes, "assetId", assetId), address);
+
+                yield m("id", id, "disputeReference", disputeRef, "status", status, "adminNotes", adminNotes);
+            }
             default -> throw new ApiException(404, "Not Found");
         };
     }
@@ -534,5 +633,15 @@ public class AdminServiceImpl implements AdminService {
         log.setIpAddress(ipAddress);
         log.setCreatedAt(now());
         logs.save(log);
+    }
+
+    private void notifyUser(long targetUserId, String title, String message) {
+        Notification n = new Notification();
+        n.setUserId(targetUserId);
+        n.setTitle(title);
+        n.setMessage(message);
+        n.setIsRead(0L);
+        n.setCreatedAt(now());
+        notifications.save(n);
     }
 }

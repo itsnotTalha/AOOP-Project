@@ -378,3 +378,25 @@ CREATE TABLE IF NOT EXISTS document_metadata (
  document_id INTEGER PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,
  name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', metadata_hash TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS asset_disputes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  dispute_reference TEXT UNIQUE NOT NULL,
+  verification_reference TEXT,
+  asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  claimant_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  registered_owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  evidence TEXT NOT NULL,
+  contact_email TEXT,
+  match_type TEXT,
+  confidence REAL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'under_review', 'resolved_transferred', 'resolved_removed', 'rejected')),
+  admin_notes TEXT,
+  reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_asset_disputes_status ON asset_disputes(status);
+CREATE INDEX IF NOT EXISTS idx_asset_disputes_claimant ON asset_disputes(claimant_id);
+CREATE INDEX IF NOT EXISTS idx_asset_disputes_asset ON asset_disputes(asset_id);

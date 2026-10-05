@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "notifications")
 public class Notification {
-    protected Notification() {}
+    public Notification() {}
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

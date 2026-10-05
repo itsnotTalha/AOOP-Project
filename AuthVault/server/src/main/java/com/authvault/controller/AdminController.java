@@ -15,7 +15,7 @@ public class AdminController {
     public Map<String,Object> read(@AuthenticationPrincipal CurrentUser user,@PathVariable String section,@RequestParam Map<String,String> options){
         return Map.of(section,service.read(user,section,options));
     }
-    @PatchMapping("/{section:users|listings|assets}/{id}")
+    @PatchMapping("/{section:users|listings|assets|disputes}/{id}")
     public Map<String,Object> update(@AuthenticationPrincipal CurrentUser user,@PathVariable String section,@PathVariable Long id,@RequestBody Map<String,Object> body,HttpServletRequest request){
         return Map.of(section.substring(0,section.length()-1),service.update(user,section,id,body,request.getRemoteAddr()));
     }

@@ -261,6 +261,15 @@
 	color: var(--text-muted);
 }
 
+:where(html[data-workspace]) .ws-trigger--collapsed {
+	justify-content: center !important;
+	padding: 8px 2px !important;
+}
+:where(html[data-workspace]) .ws-switcher--collapsed .ws-popover {
+	left: calc(100% + 12px) !important;
+	top: 0 !important;
+}
+
 @media (min-width: 901px) {
 	:where(html[data-workspace]) .app-shell--collapsed .ws-trigger-copy,
 	:where(html[data-workspace]) .app-shell--collapsed .ws-chevron {

@@ -194,3 +194,48 @@
 :where(html[data-workspace]) .preview-request-list li > div:first-child { display: grid; gap: 6px; }
 :where(html[data-workspace]) .preview-request-list li span { color: var(--text-muted); font-size: .75rem; }
 :where(html[data-workspace]) .preview-request-actions { display: flex; gap: 8px; }
+
+/* Sidebar collapsed state refinements */
+:where(html[data-workspace]) .sidebar--collapsed {
+	width: 76px !important;
+}
+:where(html[data-workspace]) .sidebar--collapsed .sidebar__brand {
+	justify-content: center !important;
+	padding: 0 !important;
+}
+:where(html[data-workspace]) .sidebar-link--collapsed {
+	justify-content: center !important;
+	padding: 0 !important;
+}
+:where(html[data-workspace]) .sidebar--collapsed .sidebar__collapse {
+	transform: rotate(180deg) !important;
+}
+
+/* Closest match card header actions and badge protection */
+:where(html[data-workspace]) .closest-match-card__actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-shrink: 0;
+}
+:where(html[data-workspace]) .closest-match-card__actions .status-badge {
+	width: auto !important;
+	height: auto !important;
+	min-width: unset !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	padding: 5px 12px !important;
+	border-radius: 999px !important;
+	white-space: nowrap !important;
+	line-height: 1 !important;
+}
+
+/* Topbar user profile wrap protection */
+:where(html[data-workspace]) .topbar__profile div {
+	white-space: nowrap;
+}
+:where(html[data-workspace]) .topbar__profile strong,
+:where(html[data-workspace]) .topbar__profile small {
+	white-space: nowrap;
+}

@@ -117,4 +117,15 @@ class AdminApiTest {
         mvc.perform(patch("/api/admin/notifications/read").header("Authorization", token))
                 .andExpect(status().isNoContent());
     }
+
+    @Test
+    void adminCanReadVerificationAndDisputes() throws Exception {
+        String admin = adminToken();
+        mvc.perform(get("/api/admin/verification").header("Authorization", admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.verification.disputes").isArray())
+                .andExpect(jsonPath("$.verification.summary.totalDisputes").exists())
+                .andExpect(jsonPath("$.verification.summary.pendingDisputes").exists());
+    }
 }
+

@@ -38,4 +38,5 @@ export const adminService = {
 	updateUser: async (id, changes) => (await request(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(changes) })).user,
 	updateListing: async (id, status) => (await request(`/listings/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) })).listing,
 	updateAsset: async (id, status) => (await request(`/assets/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) })).asset,
+	updateDispute: async (id, changes) => (await request(`/disputes/${id}`, { method: 'PATCH', body: JSON.stringify(changes) })).dispute,
 };

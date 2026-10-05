@@ -27,10 +27,19 @@ class VerificationApiTest {
  mvc.perform(multipart("/api/assets/upload").file(image()).param("title","Artwork").param("category","art").header("Authorization",token)).andExpect(status().isCreated());
  JsonNode created=json.readTree(mvc.perform(multipart("/api/verifications").file(image()).header("Authorization",other))
  .andExpect(status().isCreated()).andExpect(jsonPath("$.verification.result").value("matches_found"))
- .andExpect(jsonPath("$.verification.matches[0].ownerIsCurrentUser").value(false)).andReturn().getResponse().getContentAsString());
+ .andExpect(jsonPath("$.verification.matches[0].ownerIsCurrentUser").value(false))
+ .andExpect(jsonPath("$.verification.matches[0].ownerName").value("Verify User"))
+ .andExpect(jsonPath("$.verification.matches[0].ownerUniqueId").isNotEmpty()).andReturn().getResponse().getContentAsString());
  String ref=created.path("verification").path("reference").asText();
+ long assetId=created.path("verification").path("matches").get(0).path("assetId").asLong();
  mvc.perform(get("/api/verifications").header("Authorization",other)).andExpect(status().isOk()).andExpect(jsonPath("$.verifications.length()").value(1));
  mvc.perform(get("/api/verifications/"+ref).header("Authorization",other)).andExpect(status().isOk()).andExpect(jsonPath("$.verification.comparison.fileName").value("synthetic-rgba.png"));
  mvc.perform(get("/api/verifications/"+ref).header("Authorization",token)).andExpect(status().isNotFound());
+
+ mvc.perform(get("/api/verifications/"+ref+"/matches/"+assetId+"/content").header("Authorization",other)).andExpect(status().isOk());
+ String disputeBody="{\"verificationReference\":\""+ref+"\",\"assetId\":"+assetId+",\"reason\":\"unauthorized_upload\",\"evidence\":\"I originally produced this graphic artwork and hold prior source files.\"}";
+ mvc.perform(post("/api/verifications/disputes").contentType("application/json").content(disputeBody).header("Authorization",other))
+  .andExpect(status().isCreated()).andExpect(jsonPath("$.dispute.status").value("pending")).andExpect(jsonPath("$.dispute.disputeReference").isNotEmpty());
+ mvc.perform(get("/api/verifications/disputes").header("Authorization",other)).andExpect(status().isOk()).andExpect(jsonPath("$.disputes.length()").value(1));
  }
 }

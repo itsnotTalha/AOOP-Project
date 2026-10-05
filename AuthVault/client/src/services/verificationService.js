@@ -25,4 +25,16 @@ async function get(reference) {
 	return (await request(`/verifications/${encodeURIComponent(reference)}`)).verification;
 }
 
-export const verificationService = { create, list, get };
+async function reportDispute(payload) {
+	return (await request('/verifications/disputes', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload),
+	})).dispute;
+}
+
+async function getDisputes() {
+	return (await request('/verifications/disputes')).disputes;
+}
+
+export const verificationService = { create, list, get, reportDispute, getDisputes };
